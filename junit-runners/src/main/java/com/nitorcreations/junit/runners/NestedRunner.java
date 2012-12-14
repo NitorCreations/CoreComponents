@@ -160,7 +160,7 @@ public class NestedRunner extends ParentRunner<Object> {
         }
 
         public Collection<? extends Object> giveMeTheDamnChildren() {
-            return getChildren();
+            return super.getChildren();
         }
 
         protected void validateConstructor(List<Throwable> errors) {
