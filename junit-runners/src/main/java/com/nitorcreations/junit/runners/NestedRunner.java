@@ -105,13 +105,11 @@ public class NestedRunner extends ParentRunner<Object> {
     }
 
     private Object constructTestClass() throws Exception {
-        if (getTestClass().getOnlyConstructor().getParameterTypes().length == 1) {
-            if (parentRunner != null) {
-                Object parent = parentRunner.constructTestClass();
-                Object newInstance = getTestClass().getOnlyConstructor().newInstance(parent);
-                delegatedRunner.currentTestObject = newInstance;
-                return newInstance;
-            }
+        if (getTestClass().getOnlyConstructor().getParameterTypes().length == 1 && parentRunner != null) {
+            Object parent = parentRunner.constructTestClass();
+            Object newInstance = getTestClass().getOnlyConstructor().newInstance(parent);
+            delegatedRunner.currentTestObject = newInstance;
+            return newInstance;
         }
         Object newInstance = getTestClass().getOnlyConstructor().newInstance();
         delegatedRunner.currentTestObject = newInstance;
