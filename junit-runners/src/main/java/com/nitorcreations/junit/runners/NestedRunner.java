@@ -139,7 +139,7 @@ public class NestedRunner extends ParentRunner<Object> {
 
     private Statement withParentAfters(Statement statement) {
         if (parentRunner != null) {
-            return new RunAfters(parentRunner.withParentBefores(statement), getAfters(), delegatedRunner.currentTestObject);
+            return new RunAfters(parentRunner.withParentAfters(statement), getAfters(), delegatedRunner.currentTestObject);
         }
         return new RunAfters(statement, getAfters(), delegatedRunner.currentTestObject);
     }
@@ -186,6 +186,22 @@ public class NestedRunner extends ParentRunner<Object> {
             statement = withParentBefores(statement);
             statement = withParentAfters(statement);
             return statement;
+        }
+
+        //Disable withBefores so it won't collide with our @Before handler
+        @Override
+        protected Statement withBefores(FrameworkMethod method, Object target,
+                Statement statement) {
+            return new RunBefores(statement,
+                    new ArrayList<FrameworkMethod>(), target);
+        }
+    
+        //Disable withAfters so it won't collide with our @After handler
+        @Override
+        protected Statement withAfters(FrameworkMethod method, Object target,
+                Statement statement) {
+            return new RunAfters(statement,
+                    new ArrayList<FrameworkMethod>(), target);
         }
 
         @Override

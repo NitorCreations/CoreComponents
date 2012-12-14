@@ -27,7 +27,6 @@ import java.util.ArrayList;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-
 import com.nitorcreations.junit.runners.NestedRunner;
 
 @RunWith(NestedRunner.class)
@@ -96,6 +95,41 @@ public class ListTest {
 	    	public void hasSizeOfTwo() {
 	    		assertThat(list.size(), is(equalTo(2)));
 	    	}
+	    	
+		    public class WithTwoMoreElements {
+		    	@Before
+		    	public void init() {
+		    		list.add("Element1");
+		    		list.add("Element2");
+		    	}
+		    	
+		    	@Test
+		    	public void hasSizeOfTwo() {
+		    		assertThat(list.size(), is(equalTo(4)));
+		    	}
+		    }
 	    }
+
+	    public class WithTwoAndNoParentTestsElements {
+	    	@Before
+	    	public void init() {
+	    		list.add("Element1");
+	    		list.add("Element2");
+	    	}
+	    		    	
+		    public class WithTwoMoreElements {
+		    	@Before
+		    	public void init() {
+		    		list.add("Element1");
+		    		list.add("Element2");
+		    	}
+		    	
+		    	@Test
+		    	public void hasSizeOfTwo() {
+		    		assertThat(list.size(), is(equalTo(4)));
+		    	}
+		    }
+	    }
+
 	}
 }
