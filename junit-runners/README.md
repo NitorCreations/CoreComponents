@@ -85,10 +85,9 @@ Example
 TODO
 ----
 
-- Nested @Before doesn't work
 - Multiple runner runner
 - Moar tests!
-
+- Write documentation for NicelyParameterized runner
 
 NicelyParameterized
 -------------------
