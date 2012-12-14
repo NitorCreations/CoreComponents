@@ -97,4 +97,4 @@ NicelyParameterized
 License
 =======
 
-[Apache License 2.0](CoreComponents/blob/master/LICENSE)
+[Apache License 2.0](CoreComponents/blob/master/junit-runners/LICENSE)
