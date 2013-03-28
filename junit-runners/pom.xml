@@ -7,6 +7,11 @@
   <packaging>jar</packaging>
   <name>JUnit Runners</name>
   <description>JUnit4 Test Runners</description>
+  <parent>
+    <groupId>org.sonatype.oss</groupId>
+    <artifactId>oss-parent</artifactId>
+    <version>7</version>
+  </parent>
   <url>https://github.com/NitorCreations/CoreComponents</url>
   <scm>
     <developerConnection>scm:git:git@github.com:NitorCreations/CoreComponents.git</developerConnection>
