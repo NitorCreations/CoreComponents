@@ -13,7 +13,6 @@ target
 /lib/
 /classes/
 .lein-deps-sum
-.settings
 .project
 .classpath
 bin

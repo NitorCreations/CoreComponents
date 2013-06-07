@@ -9,6 +9,6 @@
   <inceptionYear>2012</inceptionYear>
   <modules>
     <module>junit-runners</module>
+    <module>core-utils</module>
   </modules>
-
 </project>
