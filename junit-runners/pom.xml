@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.nitorcreations</groupId>
   <artifactId>junit-runners</artifactId>
-  <version>1.1-SNAPSHOT</version>
+  <version>1.1</version>
   <packaging>jar</packaging>
   <name>JUnit Runners</name>
   <description>JUnit4 Test Runners</description>
@@ -16,7 +16,7 @@
   <scm>
     <developerConnection>scm:git:git@github.com:NitorCreations/CoreComponents.git</developerConnection>
     <connection>scm:git:git@github.com:NitorCreations/CoreComponents.git</connection>
-    <tag>HEAD</tag>
+    <tag>junit-runners-1.1</tag>
   </scm>
   <prerequisites>
     <maven>3.0.4</maven>
