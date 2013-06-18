@@ -35,6 +35,7 @@ import org.junit.runners.ParentRunner;
 import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.Statement;
+import org.junit.internal.runners.statements.Fail;
 
 public class NestedRunner extends ParentRunner<Object> {
     private final List<Object> children = new ArrayList<Object>();
@@ -181,6 +182,9 @@ public class NestedRunner extends ParentRunner<Object> {
 
         protected Statement methodBlock(FrameworkMethod method) {
             Statement statement = super.methodBlock(method);
+	    if (statement instanceof Fail) {
+                return statement;
+	    }
             statement = withParentBefores(statement);
             statement = withParentAfters(statement);
             return statement;
