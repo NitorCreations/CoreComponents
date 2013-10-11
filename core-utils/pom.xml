@@ -166,6 +166,7 @@
       <groupId>org.apache.velocity</groupId>
       <artifactId>velocity</artifactId>
       <version>1.7</version>
+      <optional>true</optional>
     </dependency>
   </dependencies>
   <reporting>
