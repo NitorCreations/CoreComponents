@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.nitorcreations</groupId>
   <artifactId>core-utils</artifactId>
-  <version>1.2-SNAPSHOT</version>
+  <version>1.2</version>
   <packaging>jar</packaging>
   <name>Core Utils</name>
   <description>Generic utilities</description>
@@ -11,13 +11,13 @@
     <groupId>org.sonatype.oss</groupId>
     <artifactId>oss-parent</artifactId>
     <version>7</version>
-    <relativePath></relativePath>
+    <relativePath />
   </parent>
   <url>https://github.com/NitorCreations/CoreComponents</url>
   <scm>
     <developerConnection>scm:git:git@github.com:NitorCreations/CoreComponents.git</developerConnection>
     <connection>scm:git:git@github.com:NitorCreations/CoreComponents.git</connection>
-    <tag>HEAD</tag>
+    <tag>core-utils-1.2</tag>
   </scm>
   <prerequisites>
     <maven>3.1.1</maven>
