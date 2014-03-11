@@ -301,6 +301,10 @@ public class WrappingParameterizedRunner extends Runner {
 	}
 
 	private ParameterizationStrategy chooseParameterizationStrategy() {
+		if (wrappedRunnerConstructor.getDeclaringClass().getPackage().getName()
+				.contains("powermock")) {
+			return new PowermockParameterizationStrategy();
+		}
 		return new DefaultParameterizationStrategy();
 	}
 
