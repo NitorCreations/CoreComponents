@@ -33,8 +33,8 @@ public class WrappingParameterizedRunnerTest {
 		public static class using_JUnit4 {
 			@ParameterizedSuite
 			public static void suite(ParameterizedSuiteBuilder builder) {
-				builder.add().withConstructor("foo");
-				builder.add().withConstructor("bar");
+				builder.constructWith("foo");
+				builder.constructWith("bar");
 			}
 
 			private String s;
@@ -61,7 +61,7 @@ public class WrappingParameterizedRunnerTest {
 		public static class using_default_runner {
 			@ParameterizedSuite
 			public static void suite(ParameterizedSuiteBuilder builder) {
-				builder.add().withConstructor("foo");
+				builder.constructWith("foo");
 			}
 
 			private String s;
@@ -81,8 +81,8 @@ public class WrappingParameterizedRunnerTest {
 		public static class using_MockitoJUnitRunner {
 			@ParameterizedSuite
 			public static void suite(ParameterizedSuiteBuilder builder) {
-				builder.add().withConstructor("foo");
-				builder.add().withConstructor("bar");
+				builder.constructWith("foo");
+				builder.constructWith("bar");
 			}
 
 			private String s;
@@ -133,8 +133,8 @@ public class WrappingParameterizedRunnerTest {
 
 			@ParameterizedSuite
 			public static void suite(ParameterizedSuiteBuilder builder) {
-				builder.add().withConstructor("foo");
-				builder.add().withConstructor("Bar");
+				builder.constructWith("foo");
+				builder.constructWith("Bar");
 			}
 
 			@Autowired
@@ -176,12 +176,11 @@ public class WrappingParameterizedRunnerTest {
 
 		@ParameterizedSuite
 		public static void suite(ParameterizedSuiteBuilder builder) {
-			builder.add()
-					.withConstructor("foo", 2, 3.2f, new Object(), (byte) 200)
-					.withDescription("Hello 1");
-			builder.add().withConstructor("bar", 4, 5.0f, "kala", (byte) 5);
-			builder.add().withConstructor(null, null, 5.0f, null, (byte) 7)
-					.withDescription("Yoo");
+			builder.constructWith("foo", 2, 3.2f, new Object(), (byte) 200)
+					.named("Hello 1");
+			builder.constructWith("bar", 4, 5.0f, "kala", (byte) 5);
+			builder.constructWith(null, null, 5.0f, null, (byte) 7)
+					.named("Yoo");
 		}
 
 		public features(String s, Integer io, float f, Object x, byte b) {
@@ -210,15 +209,15 @@ public class WrappingParameterizedRunnerTest {
 
 		@ParameterizedSuite
 		public static void suite(ParameterizedSuiteBuilder builder) {
-			builder.add().withConstructor("foo", "");
-			builder.add().withConstructor("foo", new Object());
-			builder.add().withConstructor(new Serializable() {
+			builder.constructWith("foo", "");
+			builder.constructWith("foo", new Object());
+			builder.constructWith(new Serializable() {
 				private static final long serialVersionUID = -2542951035340069284L;
 			}, "");
-			builder.add().withConstructor(new Serializable() {
+			builder.constructWith(new Serializable() {
 				private static final long serialVersionUID = -3956496975645452784L;
 			}, new Object());
-			builder.add().withConstructor(new Object(), "x");
+			builder.constructWith(new Object(), "x");
 		}
 
 		public constructor_variants(Object s, Object o) {

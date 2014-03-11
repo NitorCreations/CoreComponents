@@ -23,12 +23,19 @@ public class ParameterizedSuiteBuilder {
 	}
 
 	/**
-	 * Add a new test to the suite.
+	 * Add a new test to the suite, to be constructed with the given arguments.
+	 * <p>
+	 * In case there are multiple constructors available, please note that the
+	 * constructor is chosen based on the runtime types of the arguments, which
+	 * might be different from constructing the class directly.
 	 * 
-	 * @return a builder for configuring the test.
+	 * @param constructorArgs
+	 *            the arguments to give to the constructor
+	 * @return a builder for further configuration of the test.
 	 */
-	public TestInstantiatorBuilder add() {
-		TestInstantiatorBuilder testBuilder = new TestInstantiatorBuilder();
+	public TestInstantiatorBuilder constructWith(Object... constructorArgs) {
+		TestInstantiatorBuilder testBuilder = new TestInstantiatorBuilder(
+				constructorArgs);
 		tests.add(testBuilder);
 		return testBuilder;
 	}
@@ -59,15 +66,14 @@ public class ParameterizedSuiteBuilder {
 		private Object[] constructorArgs;
 		private String description;
 
-		TestInstantiatorBuilder() {
-			try {
-				constructor = testClass.getConstructor();
-				constructorArgs = new Object[0];
-			} catch (NoSuchMethodException e) {
-				// leave constructor as null
-			} catch (SecurityException e) {
-				throw new RuntimeException(e);
+		TestInstantiatorBuilder(Object... constructorArgs) {
+			if (constructorArgs == null) {
+				throw new IllegalArgumentException(
+						"constructor argument list null");
 			}
+			this.constructor = findBestConstructorMatch(constructorArgs);
+			this.constructorArgs = Arrays.copyOf(constructorArgs,
+					constructorArgs.length);
 		}
 
 		public Constructor<?> getConstructor() {
@@ -96,31 +102,6 @@ public class ParameterizedSuiteBuilder {
 				description = sb.toString();
 			}
 			return description;
-		}
-
-		/**
-		 * Provide the arguments to be passed to the constructor when the test
-		 * is later instantiated.
-		 * <p>
-		 * In case there are multiple constructors available, please note that
-		 * the constructor is chosen based on the runtime types of the
-		 * arguments, which might be different from constructing the class
-		 * directly.
-		 * 
-		 * @param constructorArgs
-		 *            the arguments to give to the constructor
-		 * @return the same test builder instance, for chaining.
-		 */
-		public TestInstantiatorBuilder withConstructor(
-				Object... constructorArgs) {
-			if (constructorArgs == null) {
-				throw new IllegalArgumentException(
-						"constructor argument list null");
-			}
-			this.constructor = findBestConstructorMatch(constructorArgs);
-			this.constructorArgs = Arrays.copyOf(constructorArgs,
-					constructorArgs.length);
-			return this;
 		}
 
 		private Constructor<?> findBestConstructorMatch(
@@ -227,7 +208,7 @@ public class ParameterizedSuiteBuilder {
 		 * @return the same test builder instance, for chaining.
 		 */
 
-		public TestInstantiatorBuilder withDescription(String description) {
+		public TestInstantiatorBuilder named(String description) {
 			if (description == null) {
 				description = "(null)";
 			}

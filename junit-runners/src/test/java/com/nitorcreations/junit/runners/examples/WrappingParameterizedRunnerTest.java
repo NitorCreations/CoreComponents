@@ -40,8 +40,8 @@ public class WrappingParameterizedRunnerTest {
 
 	@ParameterizedSuite
 	public static void suite(ParameterizedSuiteBuilder builder) {
-		builder.add().withConstructor("kala", 1);
-		builder.add().withConstructor("foo", 42);
+		builder.constructWith("kala", 1);
+		builder.constructWith("foo", 42);
 	}
 
 	public WrappingParameterizedRunnerTest(String str, int id) {
