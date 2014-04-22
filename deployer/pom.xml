@@ -42,6 +42,7 @@
      <aetherVersion>0.9.0.M4</aetherVersion>
     <mavenVersion>3.1.0</mavenVersion>
     <wagonVersion>1.0</wagonVersion>
+    <msgpack.version>0.6.11</msgpack.version>
   </properties>
   <build>
     <pluginManagement>
@@ -257,6 +258,11 @@
       <groupId>args4j</groupId>
       <artifactId>args4j</artifactId>
       <version>2.0.26</version>
+    </dependency>
+    <dependency>
+      <groupId>org.msgpack</groupId>
+      <artifactId>msgpack</artifactId>
+      <version>${msgpack.version}</version>
     </dependency>
   </dependencies>
   <reporting>
