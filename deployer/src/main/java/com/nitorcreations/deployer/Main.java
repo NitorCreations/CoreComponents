@@ -8,9 +8,19 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import javax.management.MBeanServerConnection;
+import javax.management.remote.JMXConnector;
+import javax.management.remote.JMXConnectorFactory;
+import javax.management.remote.JMXServiceURL;
 
 import org.apache.maven.repository.internal.MavenRepositorySystemUtils;
 import org.eclipse.aether.DefaultRepositorySystemSession;
@@ -40,10 +50,23 @@ import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
 import org.kohsuke.args4j.OptionHandlerFilter;
 
+import sun.jvmstat.monitor.Monitor;
+import sun.jvmstat.monitor.MonitoredHost;
+import sun.jvmstat.monitor.MonitoredVm;
+import sun.jvmstat.monitor.VmIdentifier;
+
+import com.sun.tools.attach.AgentInitializationException;
+import com.sun.tools.attach.AgentLoadException;
+import com.sun.tools.attach.AttachNotSupportedException;
+import com.sun.tools.attach.VirtualMachine;
+
 @WebSocket
 public class Main {
+    private static final String LOCAL_CONNECTOR_ADDRESS_PROP = "com.sun.management.jmxremote.localConnectorAddress";
+
 	private static String remoteRepo;
 	private static String localRepo;
+	private Logger log = Logger.getLogger(this.getClass().getCanonicalName());
 	static {
 		remoteRepo = System.getProperty("deployer.remote.repository", "http://localhost:5120/maven");
 		localRepo = System.getProperty("deployer.local.repository", System.getProperty("user.home") + File.separator + ".deployer" + File.separator + "repository");
@@ -149,20 +172,20 @@ public class Main {
         }
 		StatsSender statsSender;
 		try {
-	        statsSender = new StatsSender(wsSession);
-			Thread t = new Thread(statsSender);
-			t.start();
 			File java = new File(new File(new File(System.getProperty("java.home")), "bin"), "java");
 			ProcessBuilder pb = new ProcessBuilder(java.getAbsolutePath(), "-jar", rootJar.getAbsolutePath() );
 			pb.environment().putAll(System.getenv());
+			pb.environment().put("DEV", "1");
 			Process p = pb.start();
 			StreamLinePumper stdout = new StreamLinePumper(p.getInputStream(), wsSession, "STDOUT");
 			StreamLinePumper stderr = new StreamLinePumper(p.getErrorStream(), wsSession, "STDERR");
 			new Thread(stdout, "stdout").start();
 			new Thread(stderr, "stderr").start();
-		} catch (IOException e) {
-			e.printStackTrace();
-		} catch (URISyntaxException e) {
+			Thread.sleep(5000);
+			statsSender = new StatsSender(wsSession, getMBeanServerConnection());
+			Thread t = new Thread(statsSender);
+			t.start();
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
@@ -219,5 +242,100 @@ public class Main {
 	public Session getSession() {
 		return wsSession;
 	}
+	
+    public MBeanServerConnection getMBeanServerConnection() throws Exception {
+        String host = null;
+        MonitoredHost monitoredHost = MonitoredHost.getMonitoredHost(host);
+
+        Set<Integer> vms = monitoredHost.activeVms();
+        for (Integer next : vms) {
+            int lvmid = next.intValue();
+            log.fine("Inspecting VM " + lvmid);
+            MonitoredVm vm = null;
+            String vmidString = "//" + lvmid + "?mode=r";
+            try {
+                VmIdentifier id = new VmIdentifier(vmidString);
+                vm = monitoredHost.getMonitoredVm(id, 0);
+            } catch (URISyntaxException e) {
+                // Should be able to generate valid URLs
+                assert false;
+            } catch (Exception e) {
+            } finally {
+                if (vm == null) {
+                	log.fine("Could note get Monitor for VM " + lvmid);
+                	continue;
+                }
+            }
+            
+            Monitor classPath = vm.findByName("java.property.java.class.path");
+            String classPathValue = classPath.getValue().toString()
+                    .split(File.pathSeparator)[0];
+
+            log.finer("Classpath for VM " + lvmid + ": " + classPathValue);
+
+            if (classPathValue.contains(rootJar.getName())
+                && classPathValue.contains(localRepo)) {
+                log.finer("VM " + lvmid + " is a beanserver VM");
+                Monitor command = vm.findByName("sun.rt.javaCommand");
+                String lcCommandStr = command.getValue().toString()
+                        .toLowerCase();
+
+                log.finer("Command for beanserver VM " + lvmid + ": " + lcCommandStr);
+                
+                try {
+                	VirtualMachine attachedVm = VirtualMachine
+                			.attach("" + lvmid);
+                	String home = attachedVm.getSystemProperties()
+                			.getProperty("java.home");
+
+                	// Normally in ${java.home}/jre/lib/management-agent.jar but might
+                	// be in ${java.home}/lib in build environments.
+                	File f = Paths.get(home, "jre", "lib", "management-agent.jar").toFile();
+                	if (!f.exists()) {
+                    	f = Paths.get(home,  "lib", "management-agent.jar").toFile();
+                		if (!f.exists()) {
+                			throw new IOException("Management agent not found");
+                		}
+                	}
+
+                	String agent = f.getCanonicalPath();
+                	log.finer("Found agent for VM " + lvmid + ": " + agent);
+                	try {
+                		attachedVm
+                		.loadAgent(agent,
+                				"com.sun.management.jmxremote");
+                	} catch (AgentLoadException x) {
+                		IOException ioe = new IOException(x
+                				.getMessage());
+                		ioe.initCause(x);
+                		throw ioe;
+                	} catch (AgentInitializationException x) {
+                		IOException ioe = new IOException(x
+                				.getMessage());
+                		ioe.initCause(x);
+                		throw ioe;
+                	}
+                	Properties agentProps = attachedVm
+                			.getAgentProperties();
+                	String address = (String) agentProps
+                			.get(LOCAL_CONNECTOR_ADDRESS_PROP);
+                	JMXServiceURL url = new JMXServiceURL(address);
+                	JMXConnector jmxc = JMXConnectorFactory
+                			.connect(url, null);
+                	MBeanServerConnection mbsc = jmxc
+                			.getMBeanServerConnection();
+                	vm.detach();                            
+                	return mbsc;
+                } catch (AttachNotSupportedException x) {
+                	log.log(Level.WARNING,
+                			"Not attachable", x);
+                } catch (IOException x) {
+                	log.log(Level.WARNING,
+                			"Failed to get JMX connection", x);
+                }
+            }
+        }
+        return null;
+    }
 
 }

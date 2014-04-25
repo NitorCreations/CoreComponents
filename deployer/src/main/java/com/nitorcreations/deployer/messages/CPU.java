@@ -2,8 +2,6 @@ package com.nitorcreations.deployer.messages;
 
 import org.msgpack.annotation.Message;
 
-import com.google.gson.Gson;
-
 @Message
 public class CPU extends AbstractMessage {
 	long user;
