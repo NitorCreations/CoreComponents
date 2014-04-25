@@ -9,10 +9,14 @@ import org.msgpack.MessagePack;
 import com.nitorcreations.deployer.DeployerMessage;
 
 public class MessageMapping {
-	
+
 	public enum MessageType {
-		PROC, CPU, MEM, DISK, OUTPUT, LOG; 
+		PROC, CPU, MEM, DISK, OUTPUT, LOG;
+		public String lcName() {
+			return toString().toLowerCase();
+		}
 	}
+
 	private Map<MessageType, Class<?>> messageTypes = new HashMap<MessageMapping.MessageType, Class<?>>();
 
 	public MessageMapping() {
