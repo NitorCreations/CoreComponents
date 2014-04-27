@@ -10,7 +10,7 @@ import com.nitorcreations.deployer.DeployerMessage;
 public class MessageMapping {
 
 	public enum MessageType {
-		PROC, CPU, MEM, DISK, OUTPUT, LOG, JMX;
+		PROC, CPU, MEM, DISK, OUTPUT, LOG, JMX, PROCESSCPU;
 		public String lcName() {
 			return toString().toLowerCase();
 		}
@@ -26,6 +26,7 @@ public class MessageMapping {
 		messageTypes.put(MessageType.OUTPUT, OutputMessage.class);
 		messageTypes.put(MessageType.LOG, LogMessage.class);
 		messageTypes.put(MessageType.JMX, JmxMessage.class);
+		messageTypes.put(MessageType.PROCESSCPU, ProcessCPU.class);
 	}
 
 	public void registerTypes(MessagePack msgpack) {

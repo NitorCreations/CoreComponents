@@ -31,6 +31,7 @@ import org.hyperic.sigar.Cpu;
 import org.hyperic.sigar.FileSystem;
 import org.hyperic.sigar.FileSystemUsage;
 import org.hyperic.sigar.Mem;
+import org.hyperic.sigar.ProcCpu;
 import org.hyperic.sigar.ProcStat;
 import org.hyperic.sigar.Sigar;
 import org.hyperic.sigar.SigarException;
@@ -42,6 +43,7 @@ import com.nitorcreations.deployer.messages.GcInfo;
 import com.nitorcreations.deployer.messages.JmxMessage;
 import com.nitorcreations.deployer.messages.Memory;
 import com.nitorcreations.deployer.messages.MessageMapping;
+import com.nitorcreations.deployer.messages.ProcessCPU;
 import com.nitorcreations.deployer.messages.Processes;
 import com.nitorcreations.deployer.messages.MessageMapping.MessageType;
 import com.nitorcreations.deployer.messages.ThreadInfoMessage;
@@ -52,10 +54,12 @@ public class StatsSender implements Runnable {
 	private Session session;
 	private MessagePack msgpack = new MessagePack();
 	private MBeanServerConnection mBeanServerConnection;
+	private int pid;
 	
-	public StatsSender(Session session, MBeanServerConnection mBeanServerConnection) throws URISyntaxException {
+	public StatsSender(Session session, MBeanServerConnection mBeanServerConnection, int pid) throws URISyntaxException {
 		this.session = session;
 		this.mBeanServerConnection = mBeanServerConnection;
+		this.pid = pid;
 		new MessageMapping().registerTypes(msgpack);
 	}
 
@@ -70,12 +74,14 @@ public class StatsSender implements Runnable {
 
 		long nextProcs = System.currentTimeMillis() + 5000;
 		long nextCpus =  System.currentTimeMillis() + 5000;
+		long nextProcCpus =  System.currentTimeMillis() + 5000;
 		long nextMem =  System.currentTimeMillis() + 5000;
 		long nextJmx = System.currentTimeMillis() + 5000;
 		long nextDisks = System.currentTimeMillis() + 60000;
 		ProcStat pStat;
 		DiskUsage[] dStat;
 		Cpu cStat;
+		ProcCpu pCStat;
 		Mem mem;
 		while (running.get()) {
 			long now = System.currentTimeMillis();
@@ -121,6 +127,27 @@ public class StatsSender implements Runnable {
 					e.printStackTrace();
 				}
 				nextCpus = nextCpus + 5000;
+			}
+			if (now > nextProcCpus) {
+				try {
+					pCStat = sigar.getProcCpu(pid);
+					ProcessCPU  msg = new ProcessCPU();
+					PropertyUtils.copyProperties(msg, pCStat);
+					byte[] message = msgpack.write(msg);
+					session.getRemote().sendBytes(ByteBuffer.wrap(msgpack.write(new DeployerMessage(MessageType.PROCESSCPU.ordinal(), message))));
+				} catch (SigarException e) {
+					e.printStackTrace();
+					return;
+				} catch (IllegalAccessException e) {
+					e.printStackTrace();
+				} catch (InvocationTargetException e) {
+					e.printStackTrace();
+				} catch (NoSuchMethodException e) {
+					e.printStackTrace();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				nextProcCpus = nextProcCpus + 5000;
 			}
 			if (now > nextMem) {
 				try {

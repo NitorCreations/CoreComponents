@@ -89,6 +89,8 @@ public class Main {
 	private File rootJar;
 	private Session wsSession;
 
+	private int pid;
+
 	public Main() throws URISyntaxException {
 		URI repoUri = new URI(remoteRepo);
 		statUri = new URI("ws", null, repoUri.getHost(), repoUri.getPort(), "/statistics", null, null);
@@ -182,7 +184,7 @@ public class Main {
 			new Thread(stdout, "stdout").start();
 			new Thread(stderr, "stderr").start();
 			Thread.sleep(5000);
-			statsSender = new StatsSender(wsSession, getMBeanServerConnection());
+			statsSender = new StatsSender(wsSession, getMBeanServerConnection(), pid);
 			Thread t = new Thread(statsSender);
 			t.start();
 		} catch (Exception e) {
@@ -275,7 +277,8 @@ public class Main {
 
             if (classPathValue.contains(rootJar.getName())
                 && classPathValue.contains(localRepo)) {
-                log.finer("VM " + lvmid + " is a beanserver VM");
+            	pid = lvmid;
+                log.finer("VM " + lvmid + " is a our vm");
                 Monitor command = vm.findByName("sun.rt.javaCommand");
                 String lcCommandStr = command.getValue().toString()
                         .toLowerCase();
