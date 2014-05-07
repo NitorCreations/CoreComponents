@@ -1,16 +1,14 @@
-package com.nitorcreations.deployer.messages;
+package com.nitorcreations.messages;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import org.msgpack.MessagePack;
 
-import com.nitorcreations.deployer.DeployerMessage;
-
 public class MessageMapping {
 
 	public enum MessageType {
-		PROC, CPU, MEM, DISK, OUTPUT, LOG, JMX, PROCESSCPU;
+		PROC, CPU, MEM, DISK, OUTPUT, LOG, JMX, PROCESSCPU, ACCESS;
 		public String lcName() {
 			return toString().toLowerCase();
 		}
@@ -27,6 +25,7 @@ public class MessageMapping {
 		messageTypes.put(MessageType.LOG, LogMessage.class);
 		messageTypes.put(MessageType.JMX, JmxMessage.class);
 		messageTypes.put(MessageType.PROCESSCPU, ProcessCPU.class);
+		messageTypes.put(MessageType.ACCESS, AccessLogEntry.class);
 	}
 
 	public void registerTypes(MessagePack msgpack) {

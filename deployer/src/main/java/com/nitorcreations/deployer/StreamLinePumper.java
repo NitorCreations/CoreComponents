@@ -14,8 +14,9 @@ import org.eclipse.jetty.websocket.api.annotations.OnWebSocketConnect;
 import org.eclipse.jetty.websocket.api.annotations.WebSocket;
 import org.msgpack.MessagePack;
 
-import com.nitorcreations.deployer.messages.OutputMessage;
-import com.nitorcreations.deployer.messages.MessageMapping.MessageType;
+import com.nitorcreations.messages.DeployerMessage;
+import com.nitorcreations.messages.OutputMessage;
+import com.nitorcreations.messages.MessageMapping.MessageType;
 
 @WebSocket
 class StreamLinePumper implements Runnable {

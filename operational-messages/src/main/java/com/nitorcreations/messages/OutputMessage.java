@@ -1,4 +1,4 @@
-package com.nitorcreations.deployer.messages;
+package com.nitorcreations.messages;
 
 import org.msgpack.annotation.Message;
 

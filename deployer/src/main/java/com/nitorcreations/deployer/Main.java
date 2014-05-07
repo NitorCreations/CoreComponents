@@ -93,7 +93,11 @@ public class Main {
 
 	public Main() throws URISyntaxException {
 		URI repoUri = new URI(remoteRepo);
-		statUri = new URI("ws", null, repoUri.getHost(), repoUri.getPort(), "/statistics", null, null);
+		String path = "/statistics";
+		if (System.getenv("INSTANCE_ID") != null) {
+			path += "/" + System.getenv("INSTANCE_ID");
+		}
+		statUri = new URI("ws", null, repoUri.getHost(), repoUri.getPort(), path, null, null);
 	}
 	public static void main(String[] args) throws URISyntaxException {
 		new Main().doMain(args);
@@ -175,9 +179,11 @@ public class Main {
 		StatsSender statsSender;
 		try {
 			File java = new File(new File(new File(System.getProperty("java.home")), "bin"), "java");
-			ProcessBuilder pb = new ProcessBuilder(java.getAbsolutePath(), "-jar", rootJar.getAbsolutePath() );
+			ProcessBuilder pb = new ProcessBuilder(java.getAbsolutePath(),
+					"-Daccesslog.websocket=" + statUri.toString(), "-jar", rootJar.getAbsolutePath() );
 			pb.environment().putAll(System.getenv());
 			pb.environment().put("DEV", "1");
+			System.out.printf("Starting %s%n", pb.command().toString());
 			Process p = pb.start();
 			StreamLinePumper stdout = new StreamLinePumper(p.getInputStream(), wsSession, "STDOUT");
 			StreamLinePumper stderr = new StreamLinePumper(p.getErrorStream(), wsSession, "STDERR");

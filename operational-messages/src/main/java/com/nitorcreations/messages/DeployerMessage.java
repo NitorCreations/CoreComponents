@@ -1,4 +1,4 @@
-package com.nitorcreations.deployer;
+package com.nitorcreations.messages;
 
 public class DeployerMessage {
 	public int type;

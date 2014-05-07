@@ -37,16 +37,17 @@ import org.hyperic.sigar.Sigar;
 import org.hyperic.sigar.SigarException;
 import org.msgpack.MessagePack;
 
-import com.nitorcreations.deployer.messages.CPU;
-import com.nitorcreations.deployer.messages.DiskUsage;
-import com.nitorcreations.deployer.messages.GcInfo;
-import com.nitorcreations.deployer.messages.JmxMessage;
-import com.nitorcreations.deployer.messages.Memory;
-import com.nitorcreations.deployer.messages.MessageMapping;
-import com.nitorcreations.deployer.messages.ProcessCPU;
-import com.nitorcreations.deployer.messages.Processes;
-import com.nitorcreations.deployer.messages.MessageMapping.MessageType;
-import com.nitorcreations.deployer.messages.ThreadInfoMessage;
+import com.nitorcreations.messages.CPU;
+import com.nitorcreations.messages.DeployerMessage;
+import com.nitorcreations.messages.DiskUsage;
+import com.nitorcreations.messages.GcInfo;
+import com.nitorcreations.messages.JmxMessage;
+import com.nitorcreations.messages.Memory;
+import com.nitorcreations.messages.MessageMapping;
+import com.nitorcreations.messages.ProcessCPU;
+import com.nitorcreations.messages.Processes;
+import com.nitorcreations.messages.ThreadInfoMessage;
+import com.nitorcreations.messages.MessageMapping.MessageType;
 
 @WebSocket
 public class StatsSender implements Runnable {
