@@ -128,7 +128,15 @@ public class WrappingParameterizedRunner extends Runner {
 		if (runners != null) {
 			return;
 		}
-		List<TestInstantiatorBuilder> tests = fetchTests();
+		List<TestInstantiatorBuilder> tests;
+		try {
+			tests = fetchTests();
+		} catch (RuntimeException e) {
+			totalFailure = e;
+			runners = null;
+			testDescriptions = null;
+			return;
+		}
 
 		runners = new Runner[tests.size()];
 		testDescriptions = new String[runners.length];
