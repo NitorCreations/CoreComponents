@@ -1,14 +1,25 @@
 package com.nitorcreations.junit.runners.parameterized;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.mockito.ArgumentCaptor.forClass;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import java.io.Serializable;
+import java.lang.reflect.InvocationTargetException;
 
 import org.junit.Test;
 import org.junit.experimental.runners.Enclosed;
 import org.junit.runner.RunWith;
+import org.junit.runner.notification.Failure;
+import org.junit.runner.notification.RunListener;
+import org.junit.runner.notification.RunNotifier;
 import org.junit.runners.JUnit4;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -246,6 +257,34 @@ public class WrappingParameterizedRunnerTest {
 
 		@Test
 		public void test() {
+		}
+	}
+
+	@WrappedRunWith(JUnit4.class)
+	public static class constructor_failure {
+
+		@ParameterizedSuite
+		public static void suite(ParameterizedSuiteBuilder builder) {
+			throw new RuntimeException("Test");
+		}
+		
+		@Test
+		public void ensure_runner_reports_failure() throws Exception {
+			WrappingParameterizedRunner runner = new WrappingParameterizedRunner(constructor_failure.class);
+			RunNotifier notifier = new RunNotifier();
+			RunListener mockListener = mock(RunListener.class);
+			notifier.addListener(mockListener );
+			runner.run(notifier);
+			ArgumentCaptor<Failure> failureCaptor  = forClass(Failure.class);
+			verify(mockListener).testFailure(failureCaptor.capture());
+			verifyNoMoreInteractions(mockListener);
+			Failure failure = failureCaptor.getValue();
+			Throwable e = failure.getException();
+			while (e.getCause() != null) {
+				e = e.getCause();
+			}
+			assertEquals(RuntimeException.class, e.getClass());
+			assertEquals("Test", e.getMessage());
 		}
 	}
 }
