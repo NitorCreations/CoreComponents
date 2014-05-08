@@ -80,7 +80,7 @@ public class Main {
 
 	@Option( name="-t", usage="Download transitive dependencies" )
 	private boolean transitive = false;
-	
+
 	@Option(name="-m", handler=LaunchMethodHandler.class, usage="Launch method" )
 	private LaunchMethod method = LaunchMethod.UBERJAR;
 	

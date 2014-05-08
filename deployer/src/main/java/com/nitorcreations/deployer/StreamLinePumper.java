@@ -15,6 +15,7 @@ import org.eclipse.jetty.websocket.api.annotations.WebSocket;
 import org.msgpack.MessagePack;
 
 import com.nitorcreations.messages.DeployerMessage;
+import com.nitorcreations.messages.MessageMapping;
 import com.nitorcreations.messages.OutputMessage;
 import com.nitorcreations.messages.MessageMapping.MessageType;
 
@@ -24,14 +25,12 @@ class StreamLinePumper implements Runnable {
 	private final CountDownLatch closeLatch = new CountDownLatch(1);
 	private final BufferedReader in;
 	private final String name;
-	private MessagePack msgpack = new MessagePack();
+	private MessageMapping mapping = new MessageMapping();
 
 	public StreamLinePumper(InputStream in, Session session, String name) throws URISyntaxException {
 		this.session = session;
 		this.in = new BufferedReader(new InputStreamReader(in));
 		this.name = name;
-		msgpack.register(OutputMessage.class);
-		msgpack.register(DeployerMessage.class);
 	}
 	
 	@Override
@@ -39,8 +38,8 @@ class StreamLinePumper implements Runnable {
 		try {
 			String line;
 			while ((line = in.readLine()) != null) {
-				byte[] message = msgpack.write(new OutputMessage(name, line));
-				session.getRemote().sendBytes(ByteBuffer.wrap(msgpack.write(new DeployerMessage(MessageType.OUTPUT.ordinal(), message))));
+				OutputMessage msg = new OutputMessage(name, line);
+				session.getRemote().sendBytes(mapping.encode(msg));
 			}
 		} catch (IOException e) {
 			e.printStackTrace();

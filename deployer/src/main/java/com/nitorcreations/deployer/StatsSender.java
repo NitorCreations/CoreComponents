@@ -2,12 +2,10 @@ package com.nitorcreations.deployer;
 
 import java.io.IOException;
 import java.lang.management.ClassLoadingMXBean;
-import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.RuntimeMXBean;
 import java.lang.management.ThreadMXBean;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URISyntaxException;
-import java.nio.ByteBuffer;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -35,10 +33,8 @@ import org.hyperic.sigar.ProcCpu;
 import org.hyperic.sigar.ProcStat;
 import org.hyperic.sigar.Sigar;
 import org.hyperic.sigar.SigarException;
-import org.msgpack.MessagePack;
 
 import com.nitorcreations.messages.CPU;
-import com.nitorcreations.messages.DeployerMessage;
 import com.nitorcreations.messages.DiskUsage;
 import com.nitorcreations.messages.GcInfo;
 import com.nitorcreations.messages.JmxMessage;
@@ -47,13 +43,12 @@ import com.nitorcreations.messages.MessageMapping;
 import com.nitorcreations.messages.ProcessCPU;
 import com.nitorcreations.messages.Processes;
 import com.nitorcreations.messages.ThreadInfoMessage;
-import com.nitorcreations.messages.MessageMapping.MessageType;
 
 @WebSocket
 public class StatsSender implements Runnable {
 	private AtomicBoolean running = new AtomicBoolean(true);
 	private Session session;
-	private MessagePack msgpack = new MessagePack();
+	private MessageMapping mapping = new MessageMapping();
 	private MBeanServerConnection mBeanServerConnection;
 	private int pid;
 	
@@ -61,7 +56,6 @@ public class StatsSender implements Runnable {
 		this.session = session;
 		this.mBeanServerConnection = mBeanServerConnection;
 		this.pid = pid;
-		new MessageMapping().registerTypes(msgpack);
 	}
 
 	public void stop() {
@@ -92,8 +86,7 @@ public class StatsSender implements Runnable {
 					pStat = sigar.getProcStat();
 					Processes msg = new Processes();
 					PropertyUtils.copyProperties(msg, pStat);
-					byte[] message = msgpack.write(msg);
-					session.getRemote().sendBytes(ByteBuffer.wrap(msgpack.write(new DeployerMessage(MessageType.PROC.ordinal(), message))));
+					session.getRemote().sendBytes(mapping.encode(msg));
 				} catch (SigarException e) {
 					e.printStackTrace();
 					return;
@@ -113,8 +106,7 @@ public class StatsSender implements Runnable {
 					cStat = sigar.getCpu();
 					CPU msg = new CPU();
 					PropertyUtils.copyProperties(msg, cStat);
-					byte[] message = msgpack.write(msg);
-					session.getRemote().sendBytes(ByteBuffer.wrap(msgpack.write(new DeployerMessage(MessageType.CPU.ordinal(), message))));
+					session.getRemote().sendBytes(mapping.encode(msg));
 				} catch (SigarException e) {
 					e.printStackTrace();
 					return;
@@ -134,8 +126,7 @@ public class StatsSender implements Runnable {
 					pCStat = sigar.getProcCpu(pid);
 					ProcessCPU  msg = new ProcessCPU();
 					PropertyUtils.copyProperties(msg, pCStat);
-					byte[] message = msgpack.write(msg);
-					session.getRemote().sendBytes(ByteBuffer.wrap(msgpack.write(new DeployerMessage(MessageType.PROCESSCPU.ordinal(), message))));
+					session.getRemote().sendBytes(mapping.encode(msg));
 				} catch (SigarException e) {
 					e.printStackTrace();
 					return;
@@ -155,8 +146,7 @@ public class StatsSender implements Runnable {
 					mem = sigar.getMem();
 					Memory msg = new Memory();
 					PropertyUtils.copyProperties(msg, mem);
-					byte[] message = msgpack.write(msg);
-					session.getRemote().sendBytes(ByteBuffer.wrap(msgpack.write(new DeployerMessage(MessageType.MEM.ordinal(), message))));
+					session.getRemote().sendBytes(mapping.encode(msg));
 				} catch (SigarException e) {
 					e.printStackTrace();
 					return;
@@ -175,8 +165,7 @@ public class StatsSender implements Runnable {
 				try {
 					JmxMessage msg = getJmxStats();
 					if (msg != null) {
-						byte[] message = msgpack.write(msg);
-						session.getRemote().sendBytes(ByteBuffer.wrap(msgpack.write(new DeployerMessage(MessageType.JMX.ordinal(), message))));
+						session.getRemote().sendBytes(mapping.encode(msg));
 					}
 				} catch (IOException e) {
 					e.printStackTrace();
@@ -208,8 +197,7 @@ public class StatsSender implements Runnable {
 						dStat[i].setName(fileSystems[i].getDirName());
 					}
 					for (DiskUsage next : dStat) {
-						byte[] message = msgpack.write(next);
-						session.getRemote().sendBytes(ByteBuffer.wrap(msgpack.write(new DeployerMessage(MessageType.DISK.ordinal(), message))));
+						session.getRemote().sendBytes(mapping.encode(next));
 					}
 				} catch (SigarException e) {
 					e.printStackTrace();
