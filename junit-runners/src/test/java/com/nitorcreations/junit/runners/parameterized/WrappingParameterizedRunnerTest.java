@@ -8,7 +8,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import java.io.Serializable;
-import java.lang.reflect.InvocationTargetException;
 
 import org.junit.Test;
 import org.junit.experimental.runners.Enclosed;
@@ -19,7 +18,6 @@ import org.junit.runner.notification.RunNotifier;
 import org.junit.runners.JUnit4;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,8 +25,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
-
-import com.nitorcreations.junit.runners.parameterized.WrappingParameterizedRunnerTest.different_runners.using_SpringJUnit4ClassRunner.TestConfig;
 
 @RunWith(Enclosed.class)
 public class WrappingParameterizedRunnerTest {
@@ -123,7 +119,7 @@ public class WrappingParameterizedRunnerTest {
 
 		@RunWith(WrappingParameterizedRunner.class)
 		@WrappedRunWith(SpringJUnit4ClassRunner.class)
-		@ContextConfiguration(classes = { TestConfig.class })
+		@ContextConfiguration(classes = { using_SpringJUnit4ClassRunner.TestConfig.class })
 		public static class using_SpringJUnit4ClassRunner {
 
 			public interface MyInterface {
