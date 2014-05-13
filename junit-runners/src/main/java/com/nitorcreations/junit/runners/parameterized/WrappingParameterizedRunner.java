@@ -20,6 +20,7 @@ import java.util.List;
 
 import org.junit.runner.Description;
 import org.junit.runner.Runner;
+import org.junit.runner.notification.Failure;
 import org.junit.runner.notification.RunNotifier;
 import org.junit.runners.JUnit4;
 import org.junit.runners.Parameterized;
@@ -98,6 +99,7 @@ public class WrappingParameterizedRunner extends Runner {
 	private Description description;
 	private Runner[] runners;
 	private String[] testDescriptions;
+	private Exception totalFailure;
 
 	public WrappingParameterizedRunner(Class<?> testClass)
 			throws NoSuchMethodException, SecurityException,
@@ -321,11 +323,13 @@ public class WrappingParameterizedRunner extends Runner {
 		if (description == null) {
 			ensureSetup();
 			Description d = Description.createSuiteDescription(testClass);
-			for (int i = 0; i < runners.length; ++i) {
-				String testDescription = i + ". " + testDescriptions[i];
-				Runner runner = runners[i];
-				d.addChild(descriptionMapper.rewriteDescription(
-						testDescription, runner.getDescription()));
+			if (totalFailure == null) {
+				for (int i = 0; i < runners.length; ++i) {
+					String testDescription = i + ". " + testDescriptions[i];
+					Runner runner = runners[i];
+					d.addChild(descriptionMapper.rewriteDescription(
+							testDescription, runner.getDescription()));
+				}
 			}
 			description = d;
 		}
@@ -335,10 +339,14 @@ public class WrappingParameterizedRunner extends Runner {
 	@Override
 	public synchronized void run(RunNotifier notifier) {
 		getDescription();
-		notifier = new DescriptionMappingRunNotifierProxy(notifier,
-				descriptionMapper);
-		for (Runner runner : runners) {
-			runner.run(notifier);
+		if (totalFailure != null) {
+			notifier.fireTestFailure(new Failure(getDescription(), totalFailure));
+		} else {
+			notifier = new DescriptionMappingRunNotifierProxy(notifier,
+					descriptionMapper);
+			for (Runner runner : runners) {
+				runner.run(notifier);
+			}
 		}
 	}
 }
