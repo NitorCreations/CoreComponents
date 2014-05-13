@@ -88,16 +88,14 @@ public class ListTest {
 }
 ```
 
-TODO
-----
+WrappingParameterizedRunner
+===========================
 
-- Multiple runner runner
-- Moar tests!
-- Write documentation for NicelyParameterized runner
+See [/NitorCreations/CoreComponents/wiki/WrappingParameterizedRunner]
 
 NicelyParameterized
 -------------------
-
+Deprecated. Use WrappingParameterizedRunner (above) instead.
 
 StandaloneJUnitRunner
 =====================
@@ -162,6 +160,12 @@ Add all your tests to src/main/java and configure the pom.xml to generate a jar 
         </executions>
       </plugin>
 ```
+
+TODO
+====
+
+- Multiple runner runner
+- Moar tests!
 
 License
 =======
