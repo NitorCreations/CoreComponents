@@ -181,6 +181,12 @@ public class WrappingParameterizedRunner extends Runner {
 				throw new RuntimeException("Failed to call wrapped runner: "
 						+ wrappedRunnerConstructor, e);
 			} catch (Exception e) {
+				if (e instanceof ParameterizationStrategyNotAvailableException) {
+					totalFailure = e;
+					runners = null;
+					testDescriptions = null;
+					return;
+				}
 				final RuntimeException exception = new RuntimeException("Failed to get test descriptions", e);
 				final Description dummyDescription = Description.createSuiteDescription("Dummy  " + (System.identityHashCode(this) + i));
 				runners[i] = new FailingRunner(dummyDescription, exception);
