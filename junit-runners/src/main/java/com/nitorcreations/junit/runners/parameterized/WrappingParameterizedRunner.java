@@ -93,6 +93,27 @@ import com.nitorcreations.junit.runners.parameterized.ParameterizedSuiteBuilder.
  */
 public class WrappingParameterizedRunner extends Runner {
 
+	private static final class FailingRunner extends Runner {
+		private final Description description;
+		private final RuntimeException exception;
+
+		FailingRunner(Description description,
+				RuntimeException exception) {
+			this.description = description;
+			this.exception = exception;
+		}
+
+		@Override
+		public void run(RunNotifier notifier) {
+			notifier.fireTestFailure(new Failure(getDescription(), exception));
+		}
+
+		@Override
+		public Description getDescription() {
+			return description;
+		}
+	}
+
 	private final Class<?> testClass;
 	private final DescriptionMapper descriptionMapper;
 	private final Constructor<? extends Runner> wrappedRunnerConstructor;
@@ -144,11 +165,10 @@ public class WrappingParameterizedRunner extends Runner {
 		testDescriptions = new String[runners.length];
 		int i = 0;
 		for (TestInstantiatorBuilder test : tests) {
+			testDescriptions[i] = test.getDescription();
 			try {
 				runners[i] = wrappedRunnerConstructor
 						.newInstance(createParameterizedTestClass(i, test));
-				testDescriptions[i] = test.getDescription();
-				++i;
 			} catch (InvocationTargetException e) {
 				Throwable x = e.getCause();
 				if (x instanceof InitializationError) {
@@ -161,8 +181,11 @@ public class WrappingParameterizedRunner extends Runner {
 				throw new RuntimeException("Failed to call wrapped runner: "
 						+ wrappedRunnerConstructor, e);
 			} catch (Exception e) {
-				throw new RuntimeException("Failed to get test descriptions", e);
+				final RuntimeException exception = new RuntimeException("Failed to get test descriptions", e);
+				final Description dummyDescription = Description.createSuiteDescription("Dummy  " + (System.identityHashCode(this) + i));
+				runners[i] = new FailingRunner(dummyDescription, exception);
 			}
+			++i;
 		}
 	}
 
