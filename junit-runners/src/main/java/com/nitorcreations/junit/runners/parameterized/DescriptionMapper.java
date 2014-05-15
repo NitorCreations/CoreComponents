@@ -138,7 +138,8 @@ public class DescriptionMapper {
 	 */
 	public Description map(Description orig) {
 		Description desc = originalToRewrittenDescriptionMap.get(orig);
-		assert desc != null;
+		assert desc != null : 
+			"WrappingParameterizedRunner: Internal error";
 		return desc;
 	}
 }
