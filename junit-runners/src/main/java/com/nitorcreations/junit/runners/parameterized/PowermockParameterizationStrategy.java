@@ -19,9 +19,7 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
-import org.powermock.core.classloader.ClassPathAdjuster;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
-import org.powermock.core.classloader.annotations.UseClassPathAdjuster;
 
 public class PowermockParameterizationStrategy implements
 		ParameterizationStrategy {
@@ -34,6 +32,10 @@ public class PowermockParameterizationStrategy implements
 
 	private static final String FIELD_CONSTRUCTOR_ARGS = "constructorArgs";
 
+	private static final String CLASSPATH_ADJUSTER_CLASS_INTERNALNAME = "org/powermock/core/classloader/ClassPathAdjuster";
+	private static final String USE_CLASSPATH_ADJUSTER_CLASS_DESCRIPTOR = "Lorg/powermock/core/classloader/annotations/UseClassPathAdjuster;";
+	private static final String CLASSPATH_ADJUSTER_CLASSNAME = CLASSPATH_ADJUSTER_CLASS_INTERNALNAME.replace('/','.');
+
 	private static String getPowerMockHelperClassRaw(String nameRaw) {
 		String powerMockHelperClassRaw = PACKAGE_FOR_POWERMOCK_AVOIDANCE_RAW
 				+ '/' + POWERMOCK_HELPER_PREFIX + '_'
@@ -43,6 +45,14 @@ public class PowermockParameterizationStrategy implements
 
 	private String nameRaw;
 	private String powerMockHelperClassRaw;
+	
+	public PowermockParameterizationStrategy() {
+		try {
+			Class.forName(CLASSPATH_ADJUSTER_CLASSNAME);
+		} catch(ClassNotFoundException e) {
+			throw new ParameterizationStrategyNotAvailableException("Your version of PowerMock is too old - version 1.5.5 or later required");
+		}
+	}
 
 	public void classCreationInProgress(String nameRaw, ClassVisitor cw) {
 		this.nameRaw = nameRaw;
@@ -50,7 +60,7 @@ public class PowermockParameterizationStrategy implements
 
 		// @UseClassPathAdjuster(PowerMockHelperClass.class)
 		AnnotationVisitor av0 = cw.visitAnnotation(
-				Type.getType(UseClassPathAdjuster.class).getDescriptor(), true);
+				USE_CLASSPATH_ADJUSTER_CLASS_DESCRIPTOR, true);
 		av0.visit("value", Type.getObjectType(powerMockHelperClassRaw));
 		av0.visitEnd();
 
@@ -75,7 +85,7 @@ public class PowermockParameterizationStrategy implements
 
 		cw.visit(V1_5, ACC_PUBLIC + ACC_SUPER, powerMockHelperClassRaw, null,
 				"java/lang/Object",
-				new String[] { Type.getInternalName(ClassPathAdjuster.class) });
+				new String[] { CLASSPATH_ADJUSTER_CLASS_INTERNALNAME });
 
 		cw.visitField(ACC_PUBLIC + ACC_STATIC, FIELD_TEST_CLASS_BYTE_ARR, "[B",
 				null, null).visitEnd();
