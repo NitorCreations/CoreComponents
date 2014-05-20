@@ -117,6 +117,7 @@ public class ParameterizedSuiteBuilder {
 					Class<?>[] parameterTypes = ics.next().getParameterTypes();
 					if (parameterTypes.length != constructorArgs.length) {
 						ics.remove();
+						continue;
 					}
 					for (int i = 0; i < constructorArgs.length; ++i) {
 						Class<?> boxedType = boxedTypeFor(parameterTypes[i]);
