@@ -45,7 +45,7 @@ public class ParameterizedSuiteBuilder {
 	}
 
 	static final Map<Class<?>, Class<?>> UNBOXED_TO_BOXED = new HashMap<Class<?>, Class<?>>();
-	{
+	static {
 		UNBOXED_TO_BOXED.put(Integer.TYPE, Integer.class);
 		UNBOXED_TO_BOXED.put(Byte.TYPE, Byte.class);
 		UNBOXED_TO_BOXED.put(Character.TYPE, Character.class);
