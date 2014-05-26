@@ -256,17 +256,68 @@ public class WrappingParameterizedRunnerTest {
 		}
 	}
 
-	@WrappedRunWith(JUnit4.class)
-	public static class constructor_failure {
+	@RunWith(WrappingParameterizedRunner.class)
+	public static class setup_failures { 
+		
+		@RunWith(WrappingParameterizedRunner.class)
+		public static class constructor_failure {
+			static final String EXCEPTION_MESSAGE = "A01";
+			@ParameterizedSuite
+			public static void suite(ParameterizedSuiteBuilder builder) {
+				throw new RuntimeException(EXCEPTION_MESSAGE);
+			}
+		}
+
+		static final String STATIC_EXCEPTION_MESSAGE = "456";
+		@RunWith(WrappingParameterizedRunner.class)
+		public static class static_block_failure {
+			static {
+				if (true) {
+					throw new RuntimeException(STATIC_EXCEPTION_MESSAGE);
+				}
+			}
+			@ParameterizedSuite
+			public static void suite(ParameterizedSuiteBuilder builder) {
+			}
+		}
+
+		@RunWith(WrappingParameterizedRunner.class)
+		public static class constructor_parameter_toString_failure {
+			static final String EXCEPTION_MESSAGE = "123";
+			@ParameterizedSuite
+			public static void suite(ParameterizedSuiteBuilder builder) {
+				builder.constructWith(new Object() {
+					@Override
+					public String toString() {
+						throw new RuntimeException(EXCEPTION_MESSAGE);
+					}
+				});
+			}
+			public constructor_parameter_toString_failure(Object object) { }
+		}
 
 		@ParameterizedSuite
 		public static void suite(ParameterizedSuiteBuilder builder) {
-			throw new RuntimeException("Test");
+			builder.constructWith(constructor_failure.class);
+			builder.constructWith(static_block_failure.class, STATIC_EXCEPTION_MESSAGE);
+			builder.constructWith(constructor_parameter_toString_failure.class);
 		}
-		
+
+		private final Class<?> testClass;
+		private final String exceptionMessage;
+
+		public  setup_failures(Class<?> testClass) throws Exception {
+			this(testClass,  (String) testClass.getDeclaredField("EXCEPTION_MESSAGE").get(null));
+		}
+
+		public  setup_failures(Class<?> testClass, String exceptionMessage) throws Exception {
+			this.testClass = testClass;
+			this.exceptionMessage = exceptionMessage;
+		}
+
 		@Test
-		public void ensure_runner_reports_failure() throws Exception {
-			WrappingParameterizedRunner runner = new WrappingParameterizedRunner(constructor_failure.class);
+		public void ensure_failure() throws Exception {
+			WrappingParameterizedRunner runner = new WrappingParameterizedRunner(testClass);
 			RunNotifier notifier = new RunNotifier();
 			RunListener mockListener = mock(RunListener.class);
 			notifier.addListener(mockListener );
@@ -280,7 +331,7 @@ public class WrappingParameterizedRunnerTest {
 				e = e.getCause();
 			}
 			assertEquals(RuntimeException.class, e.getClass());
-			assertEquals("Test", e.getMessage());
+			assertEquals(exceptionMessage, e.getMessage());
 		}
 	}
 }
