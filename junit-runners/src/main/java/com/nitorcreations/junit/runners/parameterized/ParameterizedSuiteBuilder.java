@@ -240,15 +240,64 @@ public class ParameterizedSuiteBuilder {
 										+ Arrays.toString(args));
 					}
 				} else if (!boxedType.isInstance(args[i])) {
-					throw new IllegalArgumentException("Constructor argument "
-							+ i + " expected type " + boxedType.getName()
-							+ " but got " + args[i].getClass().getName()
-							+ " for constructor " + c
-							+ " with proposed arguments "
-							+ Arrays.toString(args));
+					if (!parameterTypes[i].isPrimitive() || !canBeCastToPrimitiveType(args[i], parameterTypes[i])) {
+						throw new IllegalArgumentException("Constructor argument "
+								+ i + " expected type " + boxedType.getName()
+								+ " but got " + args[i].getClass().getName()
+								+ " for constructor " + c
+								+ " with proposed arguments "
+								+ Arrays.toString(args));
+					}
 				}
-
 			}
+		}
+
+		private boolean canBeCastToPrimitiveType(Object arg, Class<?> primitiveType) {
+			if (primitiveType == Boolean.TYPE){
+				return false;
+			}
+			final boolean isChar = arg instanceof Character;
+			final boolean isDouble = arg instanceof Double;
+			final boolean isFloat = arg instanceof Float;
+			final boolean isLong = arg instanceof Long;
+			final boolean isInteger = arg instanceof Integer;
+			final boolean isShort = arg instanceof Short;
+			final boolean isByte = arg instanceof Byte;
+			if (!isDouble && !isFloat && !isLong && !isInteger && !isShort && !isChar && !isByte) {
+				return false;
+			}
+			if (primitiveType == Double.TYPE) {
+				return true;
+			}
+			if (isDouble) {
+				return false;
+			}
+			if (primitiveType == Float.TYPE) {
+				return true;
+			}
+			if (isFloat) {
+				return false;
+			}
+			if (primitiveType == Long.TYPE) {
+				return true;
+			}
+			if (isLong) {
+				return false;
+			}
+			if (primitiveType == Integer.TYPE) {
+				return true;
+			}
+			int v = isChar ? ((Character) arg).charValue() : ((Number)arg).intValue();
+			if (primitiveType == Character.TYPE) {
+				return v >= Character.MIN_VALUE && v <= Character.MAX_VALUE;
+			}
+			if (primitiveType == Short.TYPE) {
+				return v >= Short.MIN_VALUE&& v <= Short.MAX_VALUE;
+			}
+			if (primitiveType == Byte.TYPE) {
+				return v >= Byte.MIN_VALUE && v <= Byte.MAX_VALUE;
+			}
+			return false;
 		}
 
 		private Class<?> boxedTypeFor(Class<?> potentiallyUnboxed) {
