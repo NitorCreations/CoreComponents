@@ -24,7 +24,6 @@ import org.junit.runner.notification.Failure;
 import org.junit.runner.notification.RunNotifier;
 import org.junit.runners.JUnit4;
 import org.junit.runners.Parameterized;
-import org.junit.runners.model.InitializationError;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
@@ -151,47 +150,37 @@ public class WrappingParameterizedRunner extends Runner {
 		if (runners != null) {
 			return;
 		}
-		List<TestInstantiatorBuilder> tests;
 		try {
-			tests = fetchTests();
+			List<TestInstantiatorBuilder> tests = fetchTests();
+
+			runners = new Runner[tests.size()];
+			testDescriptions = new String[runners.length];
+			int i = 0;
+			for (TestInstantiatorBuilder test : tests) {
+				String errorMsg = "Failed to get test descriptions";
+				try {
+					testDescriptions[i] = test.getDescription();
+					errorMsg = "Failed to create test class";
+					Class<?> parameterizedTestClass = createParameterizedTestClass(i, test);
+					errorMsg = "Failed to create runner for test";
+					runners[i] = wrappedRunnerConstructor
+							.newInstance(parameterizedTestClass);
+				} catch (ParameterizationStrategyNotAvailableException e) {
+					throw e;
+				} catch (Exception e) {
+					final RuntimeException exception = new RuntimeException(errorMsg, e);
+					if (testDescriptions[i] == null) {
+						testDescriptions[i] = "Test " +i;
+					}
+					final Description dummyDescription = Description.createSuiteDescription("Dummy  " + (System.identityHashCode(this) + i));
+					runners[i] = new FailingRunner(dummyDescription, exception);
+				}
+				++i;
+			}
 		} catch (RuntimeException e) {
 			totalFailure = e;
 			runners = null;
 			testDescriptions = null;
-			return;
-		}
-
-		runners = new Runner[tests.size()];
-		testDescriptions = new String[runners.length];
-		int i = 0;
-		for (TestInstantiatorBuilder test : tests) {
-			testDescriptions[i] = test.getDescription();
-			try {
-				runners[i] = wrappedRunnerConstructor
-						.newInstance(createParameterizedTestClass(i, test));
-			} catch (InvocationTargetException e) {
-				Throwable x = e.getCause();
-				if (x instanceof InitializationError) {
-					for (Throwable tt : ((InitializationError) x).getCauses()) {
-						System.err.println("Init ERROR!");
-						tt.printStackTrace();
-					}
-					System.err.println("----");
-				}
-				throw new RuntimeException("Failed to call wrapped runner: "
-						+ wrappedRunnerConstructor, e);
-			} catch (Exception e) {
-				if (e instanceof ParameterizationStrategyNotAvailableException) {
-					totalFailure = e;
-					runners = null;
-					testDescriptions = null;
-					return;
-				}
-				final RuntimeException exception = new RuntimeException("Failed to get test descriptions", e);
-				final Description dummyDescription = Description.createSuiteDescription("Dummy  " + (System.identityHashCode(this) + i));
-				runners[i] = new FailingRunner(dummyDescription, exception);
-			}
-			++i;
 		}
 	}
 

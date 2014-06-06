@@ -6,13 +6,17 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import java.io.Serializable;
+import java.util.Arrays;
+import java.util.List;
 
 import org.junit.Test;
 import org.junit.experimental.runners.Enclosed;
+import org.junit.runner.Description;
 import org.junit.runner.RunWith;
 import org.junit.runner.notification.Failure;
 import org.junit.runner.notification.RunListener;
@@ -32,7 +36,6 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import com.nitorcreations.junit.runners.parameterized.WrappingParameterizedRunnerTest.different_runners.using_PowerMockRunner.help;
-import com.nitorcreations.junit.runners.parameterized.WrappingParameterizedRunnerTest.different_runners.using_SpringJUnit4ClassRunner.TestConfig;
 
 @RunWith(Enclosed.class)
 public class WrappingParameterizedRunnerTest {
@@ -169,7 +172,7 @@ public class WrappingParameterizedRunnerTest {
 
 		@RunWith(WrappingParameterizedRunner.class)
 		@WrappedRunWith(SpringJUnit4ClassRunner.class)
-		@ContextConfiguration(classes = { TestConfig.class })
+		@ContextConfiguration(classes = { using_SpringJUnit4ClassRunner.TestConfig.class })
 		public static class using_SpringJUnit4ClassRunner {
 
 			public interface MyInterface {
@@ -305,18 +308,147 @@ public class WrappingParameterizedRunnerTest {
 		public void test() {
 		}
 	}
+	
+	public static class verify_successfully_constructed_suite_operation {
+		@RunWith(WrappingParameterizedRunner.class)
+		public static class SampleTestClass {
+			@ParameterizedSuite
+			public static void suite(ParameterizedSuiteBuilder builder) {
+				builder.constructWith(2);
+				builder.constructWith(3).named("hello");
+			}
+			private final long d;
+			public SampleTestClass(long d) {
+				this.d = d;
+			}
+			@Test
+			public void test1() {
+				assertEquals(2L, d);
+			}
+			@Test
+			public void test2() {
+				assertEquals(1L, d);
+			}
+		}
 
-	@WrappedRunWith(JUnit4.class)
-	public static class constructor_failure {
+		@Test
+		public void ensure_proper_runner_operation() throws Exception {
+			WrappingParameterizedRunner runner = new WrappingParameterizedRunner(SampleTestClass.class);
+			
+			Description runnerDescription  = runner.getDescription();
+
+			final String testClassName = SampleTestClass.class.getName();
+
+			verifyDesc(runnerDescription , testClassName, testClassName, true);
+
+			List<Description> subRunners  = runnerDescription.getChildren();
+			assertEquals(2, subRunners.size());
+			verifyDesc(subRunners.get(0), "0. 2", testClassName, true);
+			verifyDesc(subRunners.get(1), "1. hello", testClassName, true);
+
+			List<Description> tests1 = verifyTestDescs(testClassName, subRunners.get(0).getChildren());
+			List<Description> tests2 = verifyTestDescs(testClassName, subRunners.get(1).getChildren());
+
+			RunNotifier notifier = new RunNotifier();
+			RunListener mockListener = mock(RunListener.class);
+			notifier.addListener(mockListener);
+			runner.run(notifier);
+			
+			ArgumentCaptor<Description> startCaptor = forClass(Description.class);
+			ArgumentCaptor<Failure> failureCaptor  = forClass(Failure.class);
+			ArgumentCaptor<Description> finishCaptor = forClass(Description.class);
+			verify(mockListener, times(4)).testStarted(startCaptor .capture());
+			verify(mockListener, times(3)).testFailure(failureCaptor.capture());
+			verify(mockListener, times(4)).testFinished(finishCaptor .capture());
+			verifyNoMoreInteractions(mockListener);
+			
+			List<Description> starts = startCaptor.getAllValues();
+			List<Failure> failures = failureCaptor.getAllValues();
+			List<Description> finishes = finishCaptor.getAllValues();
+
+			assertEquals(Arrays.asList(tests1.get(0), tests1.get(1), tests2.get(0), tests2.get(1)), starts);
+			assertEquals(tests1.get(1), failures.get(0).getDescription());
+			assertEquals(tests2.get(0), failures.get(1).getDescription());
+			assertEquals(tests2.get(1), failures.get(2).getDescription());
+			assertEquals(Arrays.asList(tests1.get(0), tests1.get(1), tests2.get(0), tests2.get(1)), finishes);
+		}
+
+		private List<Description> verifyTestDescs(final String testClassName, List<Description> tests) {
+			assertEquals(2, tests.size());
+			verifyDesc(tests.get(0), "test1(" + testClassName + ")", testClassName, false);
+			verifyDesc(tests.get(1), "test2(" + testClassName + ")", testClassName, false);
+			return tests;
+		}
+
+		private void verifyDesc(Description desc, String displayName, String className, boolean isSuite) {
+			assertEquals(displayName, desc.getDisplayName());
+			assertEquals(className, desc.getClassName());
+			assertEquals(isSuite, desc.isSuite());
+		}
+	}
+
+	@RunWith(WrappingParameterizedRunner.class)
+	public static class verify_suite_construction_failure_reporting { 
+		
+		@RunWith(WrappingParameterizedRunner.class)
+		public static class constructor_failure {
+			static final String EXCEPTION_MESSAGE = "A01";
+			@ParameterizedSuite
+			public static void suite(ParameterizedSuiteBuilder builder) {
+				throw new RuntimeException(EXCEPTION_MESSAGE);
+			}
+		}
+
+		static final String STATIC_EXCEPTION_MESSAGE = "456";
+		@RunWith(WrappingParameterizedRunner.class)
+		public static class static_block_failure {
+			static {
+				if (true) {
+					throw new RuntimeException(STATIC_EXCEPTION_MESSAGE);
+				}
+			}
+			@ParameterizedSuite
+			public static void suite(ParameterizedSuiteBuilder builder) {
+			}
+		}
+
+		@RunWith(WrappingParameterizedRunner.class)
+		public static class constructor_parameter_toString_failure {
+			static final String EXCEPTION_MESSAGE = "123";
+			@ParameterizedSuite
+			public static void suite(ParameterizedSuiteBuilder builder) {
+				builder.constructWith(new Object() {
+					@Override
+					public String toString() {
+						throw new RuntimeException(EXCEPTION_MESSAGE);
+					}
+				});
+			}
+			public constructor_parameter_toString_failure(Object object) { }
+		}
 
 		@ParameterizedSuite
 		public static void suite(ParameterizedSuiteBuilder builder) {
-			throw new RuntimeException("Test");
+			builder.constructWith(constructor_failure.class);
+			builder.constructWith(static_block_failure.class, STATIC_EXCEPTION_MESSAGE);
+			builder.constructWith(constructor_parameter_toString_failure.class);
 		}
-		
+
+		private final Class<?> testClass;
+		private final String exceptionMessage;
+
+		public  verify_suite_construction_failure_reporting(Class<?> testClass) throws Exception {
+			this(testClass,  (String) testClass.getDeclaredField("EXCEPTION_MESSAGE").get(null));
+		}
+
+		public  verify_suite_construction_failure_reporting(Class<?> testClass, String exceptionMessage) throws Exception {
+			this.testClass = testClass;
+			this.exceptionMessage = exceptionMessage;
+		}
+
 		@Test
-		public void ensure_runner_reports_failure() throws Exception {
-			WrappingParameterizedRunner runner = new WrappingParameterizedRunner(constructor_failure.class);
+		public void ensure_failure() throws Exception {
+			WrappingParameterizedRunner runner = new WrappingParameterizedRunner(testClass);
 			RunNotifier notifier = new RunNotifier();
 			RunListener mockListener = mock(RunListener.class);
 			notifier.addListener(mockListener );
@@ -330,7 +462,7 @@ public class WrappingParameterizedRunnerTest {
 				e = e.getCause();
 			}
 			assertEquals(RuntimeException.class, e.getClass());
-			assertEquals("Test", e.getMessage());
+			assertEquals(exceptionMessage, e.getMessage());
 		}
 	}
 }
