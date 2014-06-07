@@ -35,8 +35,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
-import com.nitorcreations.junit.runners.parameterized.WrappingParameterizedRunnerTest.different_runners.using_PowerMockRunner.help;
-
 @RunWith(Enclosed.class)
 public class WrappingParameterizedRunnerTest {
 
@@ -130,7 +128,7 @@ public class WrappingParameterizedRunnerTest {
 
 		@RunWith(WrappingParameterizedRunner.class)
 		@WrappedRunWith(PowerMockRunner.class)
-		@PrepareForTest(help.class)
+		@PrepareForTest(using_PowerMockRunner.help.class)
 		public static class using_PowerMockRunner {
 			@ParameterizedSuite
 			public static void suite(ParameterizedSuiteBuilder builder) {
