@@ -1,7 +1,9 @@
 package com.nitorcreations.junit.runners.parameterized;
 
+import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThat;
 import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -23,6 +25,9 @@ import org.junit.runners.JUnit4;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
+import org.powermock.api.mockito.PowerMockito;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -118,6 +123,48 @@ public class WrappingParameterizedRunnerTest {
 			@Test
 			public void test2() {
 				LoggerFactory.getLogger(getClass()).info("test2() s=" + s);
+			}
+		}
+
+		@RunWith(WrappingParameterizedRunner.class)
+		@WrappedRunWith(PowerMockRunner.class)
+		@PrepareForTest(using_PowerMockRunner.help.class)
+		public static class using_PowerMockRunner {
+			@ParameterizedSuite
+			public static void suite(ParameterizedSuiteBuilder builder) {
+				builder.constructWith("foo");
+				builder.constructWith("bar");
+			}
+
+			private String s;
+
+			public using_PowerMockRunner(String s) {
+				this.s = s;
+			}
+
+			public static class help {
+				/**
+				 * A final method that we override with powermock
+				 */
+				public final String get() {
+					return "should be overridden";
+				}
+			}
+
+			@Test
+			public void test1() {
+				LoggerFactory.getLogger(getClass()).info("test() s=" + s);
+				help mock = PowerMockito.mock(help.class);
+				PowerMockito.when(mock.get()).thenReturn("yeah");
+				assertThat(mock.get(), is("yeah"));
+			}
+
+			@Test
+			public void test2() {
+				LoggerFactory.getLogger(getClass()).info("test() s=" + s);
+				help mock = PowerMockito.mock(help.class);
+				PowerMockito.when(mock.get()).thenReturn("joo");
+				assertThat(mock.get(), is("joo"));
 			}
 		}
 
