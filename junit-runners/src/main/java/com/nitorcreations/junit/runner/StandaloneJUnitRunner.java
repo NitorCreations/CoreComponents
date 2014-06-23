@@ -64,7 +64,7 @@ public class StandaloneJUnitRunner {
         try {
           classSets[i][j] = Class.forName(classNames[j]);
         } catch (Throwable t) {
-          throw new RuntimeException("Class " + classNames[i] + " not available: " + t);
+          throw new RuntimeException("Class " + classNames[j] + " not available: " + t);
         }
       }
     }
