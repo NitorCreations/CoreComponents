@@ -23,6 +23,7 @@ import static com.nitorcreations.junit.runner.XmlJUnitFormatter.Status.error;
 import static com.nitorcreations.junit.runner.XmlJUnitFormatter.Status.failed;
 import static com.nitorcreations.junit.runner.XmlJUnitFormatter.Status.ignored;
 import static com.nitorcreations.junit.runner.XmlJUnitFormatter.Status.success;
+import static java.lang.Integer.toHexString;
 import static java.lang.System.currentTimeMillis;
 import static java.lang.System.err;
 import static java.lang.System.getProperty;
@@ -149,7 +150,27 @@ public class XmlJUnitFormatter extends RunListener {
   }
 
   private static String xmlEscape(String str) {
-    return str.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    StringBuilder sb = new StringBuilder(str.length() + 128);
+    for (int i = 0; i < str.length(); i++) {
+      char ch = str.charAt(i);
+      if (ch == '<') {
+        sb.append("&lt;");
+      } else if (ch == '>') {
+        sb.append("&gt;");
+      } else if (ch == '&') {
+        sb.append("&amp;");
+      } else if (ch == 0) {
+        sb.append("(0)");
+      } else if ((ch >= 1 && ch <= 8) || ch == 0xB || ch == 0xC || (ch >= 0xE && ch <= 0x1F) || (ch >= 0x7F && ch <= 0x84) || (ch >= 0x86 && ch <= 0x9F)) {
+        sb.append("&#x");
+        sb.append(toHexString(ch));
+        sb.append(';');
+      } else {
+        sb.append(ch);
+      }
+    }
+    return sb.toString();
+
   }
 
   @Override
