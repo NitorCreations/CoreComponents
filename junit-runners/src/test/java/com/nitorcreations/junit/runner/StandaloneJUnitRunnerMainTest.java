@@ -30,7 +30,7 @@ public class StandaloneJUnitRunnerMainTest {
   
   @Before
   public void disableSystemExit() {
-    setProperty("output.dir", "target" + File.separator + "testrunner");
+    setProperty("output.dir", System.getProperty("user.dir") + File.separator + "target" + File.separator + "testrunner");
     setSecurityManager(new StopExitSecurityManager());
   }
   
