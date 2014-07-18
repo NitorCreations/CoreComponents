@@ -1,7 +1,5 @@
 package com.nitorcreations.messages;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 import org.msgpack.annotation.Message;
 

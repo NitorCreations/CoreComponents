@@ -1,15 +1,23 @@
 package com.nitorcreations.messages;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.jar.Pack200.Unpacker;
 
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;
+import net.jpountz.lz4.LZ4FastDecompressor;
 import net.jpountz.lz4.LZ4SafeDecompressor;
 
 import org.msgpack.MessagePack;
+import org.msgpack.packer.Packer;
+import org.msgpack.unpacker.BufferUnpacker;
 
 public class MessageMapping {
 	MessagePack msgpack = new MessagePack();
@@ -58,23 +66,41 @@ public class MessageMapping {
 		return messageClasses.get(msgclass);
 	}
 
-	public ByteBuffer encode(Object msg) throws IOException {
+	public ByteBuffer encode(List<AbstractMessage> msgs) throws IOException {
 		LZ4Factory factory = LZ4Factory.fastestInstance();
 		LZ4Compressor compressor = factory.fastCompressor();
-		byte[] message = msgpack.write(msg);
-		MessageType type = map(msg.getClass()); 
-		byte[] data = msgpack.write(new DeployerMessage(type.ordinal(), message));
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		Packer packer = msgpack.createPacker(out);
+		for (AbstractMessage msg : msgs) {
+          byte[] message = msgpack.write(msg);
+		  MessageType type = map(msg.getClass()); 
+		  packer.write(new DeployerMessage(type.ordinal(), message));
+		}
+		byte data[] = out.toByteArray();
 		int maxCompressedLength = compressor.maxCompressedLength(data.length);
-		byte[] compressed = new byte[maxCompressedLength];
-		int compressedLength = compressor.compress(data, 0, data.length, compressed, 0, maxCompressedLength);
-		return ByteBuffer.wrap(compressed, 0, compressedLength);
+		byte[] compressed = new byte[maxCompressedLength + 4];
+		int compressedLength = compressor.compress(data, 0, data.length, compressed, 4, maxCompressedLength);
+        byte[] len= ByteBuffer.allocate(4).putInt(compressedLength).array();
+        System.arraycopy(len, 0, compressed, 0, 4);
+		return ByteBuffer.wrap(compressed, 0, compressedLength + 4);
 	}
 
-	public Object decode(byte[] data, int offset, int length) throws IOException {
+	public List<AbstractMessage> decode(byte[] data, int offset, int length) throws IOException {
+		byte[] lenBytes = new byte[4];
+		System.arraycopy(data, offset, lenBytes, 0, 4);
+		BigInteger len = new BigInteger(lenBytes);
+		
 		LZ4Factory factory = LZ4Factory.fastestInstance();
-		LZ4SafeDecompressor decompressor = factory.safeDecompressor();
-		byte[] restored = decompressor.decompress(data, offset, length, length * 5);
-		DeployerMessage msg = msgpack.read(restored, DeployerMessage.class);
-		return msgpack.read(msg.message, map(msg.type));
+		LZ4FastDecompressor decompressor = factory.fastDecompressor();
+		byte[] restored = new byte[len.intValue()];
+		decompressor.decompress(data, offset + 4, restored , 0, len.intValue());
+		BufferUnpacker unpacker = msgpack.createBufferUnpacker(restored);
+		ArrayList<AbstractMessage> ret = new ArrayList<AbstractMessage>();
+		DeployerMessage next = unpacker.read(DeployerMessage.class);
+		while (next != null) {
+			ret.add(msgpack.read(next.message, map(next.type)));
+			next = unpacker.read(DeployerMessage.class);
+		}
+	   return ret;
 	}
 }

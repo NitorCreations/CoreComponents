@@ -4,20 +4,29 @@ import org.msgpack.annotation.Message;
 
 @Message
 public class LogMessage extends AbstractMessage {
-	public long timeStamp;
+	public long logEntryTimeStamp;
 	public String level;
 	public String message;
+	public String stackTrace;
 	public LogMessage() {}
-	public LogMessage(long timeStamp, String level, String message) {
-		this.timeStamp = timeStamp;
+	
+	public LogMessage(long logEntryTimeStamp, String level, String message) {
+		this.logEntryTimeStamp = logEntryTimeStamp;
 		this.level = level;
 		this.message = message;
+		this.stackTrace = "";
 	}
-	public long getTimeStamp() {
-		return timeStamp;
+	public LogMessage(long logEntryTimeStamp, String level, String message, String stackTrace) {
+		this.logEntryTimeStamp = logEntryTimeStamp;
+		this.level = level;
+		this.message = message;
+		this.stackTrace = stackTrace;
 	}
-	public void setTimeStamp(long timeStamp) {
-		this.timeStamp = timeStamp;
+	public long getLogEntryTimeStamp() {
+		return logEntryTimeStamp;
+	}
+	public void setLogEntryTimeStamp(long logEntryTimeStamp) {
+		this.logEntryTimeStamp = logEntryTimeStamp;
 	}
 	public String getLevel() {
 		return level;

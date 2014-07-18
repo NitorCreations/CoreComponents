@@ -43,17 +43,17 @@ import com.nitorcreations.messages.MessageMapping;
 import com.nitorcreations.messages.ProcessCPU;
 import com.nitorcreations.messages.Processes;
 import com.nitorcreations.messages.ThreadInfoMessage;
+import com.nitorcreations.messages.WebSocketTransmitter;
 
-@WebSocket
 public class StatsSender implements Runnable {
 	private AtomicBoolean running = new AtomicBoolean(true);
-	private Session session;
+	private final WebSocketTransmitter transmitter;
 	private MessageMapping mapping = new MessageMapping();
 	private MBeanServerConnection mBeanServerConnection;
 	private int pid;
 	
-	public StatsSender(Session session, MBeanServerConnection mBeanServerConnection, int pid) throws URISyntaxException {
-		this.session = session;
+	public StatsSender(WebSocketTransmitter transmitter, MBeanServerConnection mBeanServerConnection, int pid) throws URISyntaxException {
+		this.transmitter = transmitter;
 		this.mBeanServerConnection = mBeanServerConnection;
 		this.pid = pid;
 	}
@@ -86,7 +86,7 @@ public class StatsSender implements Runnable {
 					pStat = sigar.getProcStat();
 					Processes msg = new Processes();
 					PropertyUtils.copyProperties(msg, pStat);
-					session.getRemote().sendBytes(mapping.encode(msg));
+					transmitter.queue(msg);
 				} catch (SigarException e) {
 					e.printStackTrace();
 					return;
@@ -95,8 +95,6 @@ public class StatsSender implements Runnable {
 				} catch (InvocationTargetException e) {
 					e.printStackTrace();
 				} catch (NoSuchMethodException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
 					e.printStackTrace();
 				}
 				nextProcs = nextProcs + 5000;
@@ -106,7 +104,7 @@ public class StatsSender implements Runnable {
 					cStat = sigar.getCpu();
 					CPU msg = new CPU();
 					PropertyUtils.copyProperties(msg, cStat);
-					session.getRemote().sendBytes(mapping.encode(msg));
+					transmitter.queue(msg);
 				} catch (SigarException e) {
 					e.printStackTrace();
 					return;
@@ -115,8 +113,6 @@ public class StatsSender implements Runnable {
 				} catch (InvocationTargetException e) {
 					e.printStackTrace();
 				} catch (NoSuchMethodException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
 					e.printStackTrace();
 				}
 				nextCpus = nextCpus + 5000;
@@ -126,7 +122,7 @@ public class StatsSender implements Runnable {
 					pCStat = sigar.getProcCpu(pid);
 					ProcessCPU  msg = new ProcessCPU();
 					PropertyUtils.copyProperties(msg, pCStat);
-					session.getRemote().sendBytes(mapping.encode(msg));
+					transmitter.queue(msg);
 				} catch (SigarException e) {
 					e.printStackTrace();
 					return;
@@ -135,8 +131,6 @@ public class StatsSender implements Runnable {
 				} catch (InvocationTargetException e) {
 					e.printStackTrace();
 				} catch (NoSuchMethodException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
 					e.printStackTrace();
 				}
 				nextProcCpus = nextProcCpus + 5000;
@@ -146,7 +140,7 @@ public class StatsSender implements Runnable {
 					mem = sigar.getMem();
 					Memory msg = new Memory();
 					PropertyUtils.copyProperties(msg, mem);
-					session.getRemote().sendBytes(mapping.encode(msg));
+					transmitter.queue(msg);
 				} catch (SigarException e) {
 					e.printStackTrace();
 					return;
@@ -156,8 +150,6 @@ public class StatsSender implements Runnable {
 					e.printStackTrace();
 				} catch (NoSuchMethodException e) {
 					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
 				}
 				nextMem = nextMem + 5000;
 			}
@@ -165,7 +157,7 @@ public class StatsSender implements Runnable {
 				try {
 					JmxMessage msg = getJmxStats();
 					if (msg != null) {
-						session.getRemote().sendBytes(mapping.encode(msg));
+						transmitter.queue(msg);
 					}
 				} catch (IOException e) {
 					e.printStackTrace();
@@ -197,7 +189,7 @@ public class StatsSender implements Runnable {
 						dStat[i].setName(fileSystems[i].getDirName());
 					}
 					for (DiskUsage next : dStat) {
-						session.getRemote().sendBytes(mapping.encode(next));
+						transmitter.queue(next);
 					}
 				} catch (SigarException e) {
 					e.printStackTrace();
@@ -208,13 +200,10 @@ public class StatsSender implements Runnable {
 					e.printStackTrace();
 				} catch (NoSuchMethodException e) {
 					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
 				}
 				nextDisks = nextDisks + 60000;
 			}
 		}
-		session.close(StatusCode.NORMAL, "I'm done");
 	}
 	
 	public JmxMessage getJmxStats() throws MalformedObjectNameException, IOException, ReflectionException, IllegalAccessException, InvocationTargetException, NoSuchMethodException, InstanceNotFoundException, MBeanException {

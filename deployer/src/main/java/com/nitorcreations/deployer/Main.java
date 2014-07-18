@@ -41,9 +41,6 @@ import org.eclipse.aether.util.graph.visitor.PreorderNodeListGenerator;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketConnect;
-import org.eclipse.jetty.websocket.api.annotations.WebSocket;
-import org.eclipse.jetty.websocket.client.ClientUpgradeRequest;
-import org.eclipse.jetty.websocket.client.WebSocketClient;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
@@ -55,12 +52,12 @@ import sun.jvmstat.monitor.MonitoredHost;
 import sun.jvmstat.monitor.MonitoredVm;
 import sun.jvmstat.monitor.VmIdentifier;
 
+import com.nitorcreations.messages.WebSocketTransmitter;
 import com.sun.tools.attach.AgentInitializationException;
 import com.sun.tools.attach.AgentLoadException;
 import com.sun.tools.attach.AttachNotSupportedException;
 import com.sun.tools.attach.VirtualMachine;
 
-@WebSocket
 public class Main {
     private static final String LOCAL_CONNECTOR_ADDRESS_PROP = "com.sun.management.jmxremote.localConnectorAddress";
 
@@ -158,24 +155,7 @@ public class Main {
 				System.exit(1);
 			}
 		}
-        WebSocketClient client = new WebSocketClient();
-        try {
-            client.start();
-            ClientUpgradeRequest request = new ClientUpgradeRequest();
-            client.connect(this, statUri, request);
-            System.out.printf("Connecting to : %s%n", statUri);
-        } catch (Throwable t) {
-            t.printStackTrace();
-        }
-        synchronized (this) {
-        	while (wsSession == null) {
-        		try {
-					this.wait(500);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-        	}
-        }
+        WebSocketTransmitter transmitter = new WebSocketTransmitter(5000, statUri);
 		StatsSender statsSender;
 		try {
 			File java = new File(new File(new File(System.getProperty("java.home")), "bin"), "java");
@@ -185,12 +165,12 @@ public class Main {
 			pb.environment().put("DEV", "1");
 			System.out.printf("Starting %s%n", pb.command().toString());
 			Process p = pb.start();
-			StreamLinePumper stdout = new StreamLinePumper(p.getInputStream(), wsSession, "STDOUT");
-			StreamLinePumper stderr = new StreamLinePumper(p.getErrorStream(), wsSession, "STDERR");
+			StreamLinePumper stdout = new StreamLinePumper(p.getInputStream(), transmitter, "STDOUT");
+			StreamLinePumper stderr = new StreamLinePumper(p.getErrorStream(), transmitter, "STDERR");
 			new Thread(stdout, "stdout").start();
 			new Thread(stderr, "stderr").start();
 			Thread.sleep(5000);
-			statsSender = new StatsSender(wsSession, getMBeanServerConnection(), pid);
+			statsSender = new StatsSender(transmitter, getMBeanServerConnection(), pid);
 			Thread t = new Thread(statsSender);
 			t.start();
 		} catch (Exception e) {
