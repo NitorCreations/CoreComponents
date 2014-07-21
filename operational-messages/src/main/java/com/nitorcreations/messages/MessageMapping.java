@@ -8,12 +8,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.jar.Pack200.Unpacker;
 
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.lz4.LZ4FastDecompressor;
-import net.jpountz.lz4.LZ4SafeDecompressor;
 
 import org.msgpack.MessagePack;
 import org.msgpack.packer.Packer;
@@ -23,7 +21,7 @@ public class MessageMapping {
 	MessagePack msgpack = new MessagePack();
 
 	public enum MessageType {
-		PROC, CPU, MEM, DISK, OUTPUT, LOG, JMX, PROCESSCPU, ACCESS;
+		PROC, CPU, MEM, DISK, OUTPUT, LOG, JMX, PROCESSCPU, ACCESS, LONGSTATS;
 		public String lcName() {
 			return toString().toLowerCase();
 		}
@@ -42,6 +40,7 @@ public class MessageMapping {
 		messageTypes.put(MessageType.JMX, JmxMessage.class);
 		messageTypes.put(MessageType.PROCESSCPU, ProcessCPU.class);
 		messageTypes.put(MessageType.ACCESS, AccessLogEntry.class);
+		messageTypes.put(MessageType.LONGSTATS, LongStatisticsMessage.class);
 
 		for (java.util.Map.Entry<MessageType, Class<? extends AbstractMessage>> next : messageTypes.entrySet()) {
 			messageClasses.put(next.getValue(), next.getKey());
