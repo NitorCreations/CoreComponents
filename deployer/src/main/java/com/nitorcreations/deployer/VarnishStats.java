@@ -28,7 +28,7 @@ public class VarnishStats implements Runnable {
 				try {
 					this.wait(interval);
 					send();
-				} catch (InterruptedException | IOException e) {
+				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
 			}
@@ -42,29 +42,34 @@ public class VarnishStats implements Runnable {
 		}
 	}
 
-	public void send() throws IOException, InterruptedException {
+	public void send() {
 		ProcessBuilder pb = new ProcessBuilder("/usr/bin/varnishstat", "-j");
 		pb.environment().putAll(System.getenv());
-		Process p = pb.start();
-		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		ByteArrayOutputStream err = new ByteArrayOutputStream();
-		StreamPumper stdout = new StreamPumper(p.getInputStream(), out);
-		StreamPumper stderr = new StreamPumper(p.getErrorStream(), err);
-		new Thread(stdout, "stdout").start();
-		new Thread(stderr, "stderr").start();
-		if (p.waitFor() == 0) {
-			Map<String, Long> values = new LinkedHashMap<String, Long>();
-			JsonObject j = new JsonParser().parse(new String(out.toByteArray())).getAsJsonObject();
-			for (Entry<String,JsonElement> entry : j.entrySet()) {
-				if (entry.getValue().isJsonObject()) {
-					values.put(entry.getKey(), entry.getValue().getAsJsonObject().get("value").getAsLong());
+		try {
+			Process p = pb.start();
+			ByteArrayOutputStream out = new ByteArrayOutputStream();
+			ByteArrayOutputStream err = new ByteArrayOutputStream();
+			StreamPumper stdout = new StreamPumper(p.getInputStream(), out);
+			StreamPumper stderr = new StreamPumper(p.getErrorStream(), err);
+			new Thread(stdout, "stdout").start();
+			new Thread(stderr, "stderr").start();
+			if (p.waitFor() == 0) {
+				Map<String, Long> values = new LinkedHashMap<String, Long>();
+				JsonObject j = new JsonParser().parse(new String(out.toByteArray())).getAsJsonObject();
+				for (Entry<String,JsonElement> entry : j.entrySet()) {
+					if (entry.getValue().isJsonObject()) {
+						values.put(entry.getKey(), entry.getValue().getAsJsonObject().get("value").getAsLong());
+					}
 				}
+				LongStatisticsMessage send = new LongStatisticsMessage();
+				send.setMap(values);
+				transmitter.queue(send);
+			} else {
+				System.out.write(out.toByteArray());
+				System.err.write(err.toByteArray());
 			}
-			LongStatisticsMessage send = new LongStatisticsMessage();
-			send.setMap(values);
-			transmitter.queue(send);
-		} else {
-			System.err.write(err.toByteArray());
+		} catch (InterruptedException | IOException e) {
+			e.printStackTrace();
 		}
 	}
 }

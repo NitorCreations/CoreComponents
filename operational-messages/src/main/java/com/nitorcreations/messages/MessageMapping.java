@@ -21,7 +21,7 @@ public class MessageMapping {
 	MessagePack msgpack = new MessagePack();
 
 	public enum MessageType {
-		PROC, CPU, MEM, DISK, OUTPUT, LOG, JMX, PROCESSCPU, ACCESS, LONGSTATS;
+		PROC, CPU, MEM, DISK, OUTPUT, LOG, JMX, PROCESSCPU, ACCESS, LONGSTATS, HASH;
 		public String lcName() {
 			return toString().toLowerCase();
 		}
@@ -41,6 +41,8 @@ public class MessageMapping {
 		messageTypes.put(MessageType.PROCESSCPU, ProcessCPU.class);
 		messageTypes.put(MessageType.ACCESS, AccessLogEntry.class);
 		messageTypes.put(MessageType.LONGSTATS, LongStatisticsMessage.class);
+		messageTypes.put(MessageType.HASH, HashMessage.class);
+		
 
 		for (java.util.Map.Entry<MessageType, Class<? extends AbstractMessage>> next : messageTypes.entrySet()) {
 			messageClasses.put(next.getValue(), next.getKey());
@@ -77,22 +79,34 @@ public class MessageMapping {
 		}
 		byte data[] = out.toByteArray();
 		int maxCompressedLength = compressor.maxCompressedLength(data.length);
-		byte[] compressed = new byte[maxCompressedLength + 4];
-		int compressedLength = compressor.compress(data, 0, data.length, compressed, 4, maxCompressedLength);
-        byte[] len= ByteBuffer.allocate(4).putInt(compressedLength).array();
-        System.arraycopy(len, 0, compressed, 0, 4);
-		return ByteBuffer.wrap(compressed, 0, compressedLength + 4);
+		byte[] compressed = new byte[maxCompressedLength];
+		int compressedLength = compressor.compress(data, 0, data.length, compressed, 0, maxCompressedLength);
+		if (compressedLength >= data.length) {
+	        return ByteBuffer.allocate(4 + data.length).putInt(0).put(data);
+		}
+        return ByteBuffer.allocate(4 + compressedLength).putInt(compressedLength).put(compressed, 0, compressedLength);
 	}
 
 	public List<AbstractMessage> decode(byte[] data, int offset, int length) throws IOException {
-		byte[] lenBytes = new byte[4];
-		System.arraycopy(data, offset, lenBytes, 0, 4);
-		BigInteger len = new BigInteger(lenBytes);
-		
-		LZ4Factory factory = LZ4Factory.fastestInstance();
-		LZ4FastDecompressor decompressor = factory.fastDecompressor();
-		byte[] restored = new byte[len.intValue()];
-		decompressor.decompress(data, offset + 4, restored , 0, len.intValue());
+		if (length < 4) return new ArrayList<AbstractMessage>();
+		ByteBuffer read = ByteBuffer.wrap(data);
+		int uclen = read.getInt();
+		byte[] restored;
+		if (uclen == 0) {
+			restored = new byte[length - 4];
+			read.get(restored);
+		} else {
+			restored = new byte[uclen];
+			LZ4Factory factory = LZ4Factory.fastestInstance();
+			LZ4FastDecompressor decompressor = factory.fastDecompressor();
+			try {
+				decompressor.decompress(data, offset + 4, restored , 0, uclen);
+			} catch (Throwable e) {
+				System.out.printf("Received buffer[%d], %d, %d - uncompressed len %d\n", data.length, offset, length, uclen);
+				e.printStackTrace();
+				return new ArrayList<AbstractMessage>();
+			}
+		}
 		BufferUnpacker unpacker = msgpack.createBufferUnpacker(restored);
 		ArrayList<AbstractMessage> ret = new ArrayList<AbstractMessage>();
 		DeployerMessage next = unpacker.read(DeployerMessage.class);

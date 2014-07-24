@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <script type="text/javascript" src="scripts/d3.js" charset="utf-8"></script>
+    <script type="text/javascript" src="scripts/cubism.js"></script>
+    <link type="text/css" rel="stylesheet" href="styles/main.css">
+ </head>
+ <body>
+   <div id="chart"></div>
+   <script type="text/javascript">
+
+   var context = cubism.context()
+  	  .step(1e4)
+	  .size(1200)
+	  .start();
+
+   function deployer_metric(name) {
+	    return context.metric(function(start, stop, step, callback) {
+	      d3.json("/metrics/" + name 
+	          + "?start=" + start.getTime()
+	          + "&stop=" + stop.getTime()
+	          + "&step=" + step, function(data) {
+	        if (!data) return callback(new Error("unable to load data"));
+	        callback(null, data.map(function(d) { return d.value; }));
+	      });
+	    }, name += "");
+   };
+
+   var heap = deployer_metric("heap");
+   var mem = deployer_metric("mem").divide(100);
+   var requests = deployer_metric("requests").divide(10);
+   var latency = deployer_metric("latency");
+   
+   d3.select("#chart").call(function(div) {
+	    div.append("div")
+	      .attr("class", "axis")
+	      .call(context.axis().orient("top"));
+	    
+	    div.selectAll(".horizon")
+	      .data([heap])
+	      .enter().append("div")
+	      .attr("class", "horizon")
+	      .call(context.horizon()
+	        .colors(["#08519c", "#bae4b3"])
+	        .height(120)
+	        .format(d3.format(".5s"))
+	        .title("Heap Memory"));
+	    
+	    div.selectAll(".horizon-mem")
+	      .data([mem])
+	      .enter().append("div")
+	      .attr("class", "horizon")
+	      .call(context.horizon()
+	        .colors(["#08519c", "#bae4b3"])
+	        .height(120)
+	        .format(d3.format(".2%"))
+	        .title("Used Memory")
+	        .extent([0,1]));
+
+	    div.selectAll(".horizon-req")
+	      .data([requests])
+	      .enter().append("div")
+	      .attr("class", "horizon")
+	      .call(context.horizon()
+	        .colors(["#08519c", "#bae4b3"])
+	        .height(120)
+	        .format(function(d) {
+	        	return d.toFixed(1) + " req/s";
+	        })
+	        .title("Requests"));
+
+	    div.selectAll(".horizon-lat")
+	      .data([latency])
+	      .enter().append("div")
+	      .attr("class", "horizon")
+	      .call(context.horizon()
+	        .colors(["#08519c", "#bae4b3"])
+	        .height(120)
+	        .format(function(d) {
+	        	return d.toFixed() + " ms";
+	        })
+	        .title("Latency"));
+
+	    div.append("div")
+	      .attr("class", "rule")
+	      .call(context.rule());
+	});
+
+	context.on("focus", function(i) {
+	    format = d3.format(".5s");
+	    d3.selectAll(".horizon .value").style("right", i === null ? null : context.size() - i + "px");
+	});
+ 
+   </script>
+ </body>
+</html>
