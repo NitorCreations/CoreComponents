@@ -9,6 +9,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
 import org.eclipse.jetty.websocket.api.Session;
@@ -58,15 +60,19 @@ public class WebSocketTransmitter {
 		}
 	}
 	
-	public void queue(AbstractMessage msg) {
+	public boolean queue(AbstractMessage msg) {
 		logger.fine("Queue message type: " + msgmap.map(msg.getClass()));
 		try {
 			while (!queue.offer(msg, flushInterval * 2, TimeUnit.MILLISECONDS)) {
 				logger.info("queue full, retrying");
 			}
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			LogRecord rec = new LogRecord(Level.INFO, "Interrupted");
+			rec.setThrown(e);
+			logger.log(rec);
+			return false;
 		}
+		return true;
 	}
 	
 	@WebSocket
@@ -77,23 +83,43 @@ public class WebSocketTransmitter {
 		@Override
 		public void run() {
 			synchronized (this) {
-				connect();
+				try {
+					connect();
+				} catch (Exception e) {
+					throw new RuntimeException("Failed to connect to " + uri.toString(), e);
+				}
 				while (running) {
 					try {
 						this.wait(flushInterval);
 						if (wsSession == null) continue;
-						queue.drainTo(send);
-						if (send.size() > 0) {
-							logger.fine(String.format("Sending %d messages", send.size()));
-							wsSession.getRemote().sendBytes(msgmap.encode(send));
-							send.clear();
-						}
-					} catch (InterruptedException e) {
-						e.printStackTrace();
+						doSend();
 					} catch (IOException e) {
-						e.printStackTrace();
+						LogRecord rec = new LogRecord(Level.INFO, "Exception while sending messages");
+						rec.setThrown(e);
+						logger.log(rec);
+					} catch (InterruptedException e) {
+						LogRecord rec = new LogRecord(Level.INFO, "Interrupted");
+						rec.setThrown(e);
+						logger.log(rec);
+						try {
+							doSend();
+						} catch (IOException e1) {
+							LogRecord rec2 = new LogRecord(Level.INFO, "Exception while sending messages");
+							rec2.setThrown(e);
+							logger.log(rec2);
+						}
+						return;
 					}
 				}
+			}
+		}
+		
+		private void doSend() throws IOException {
+			queue.drainTo(send);
+			if (send.size() > 0) {
+				logger.fine(String.format("Sending %d messages", send.size()));
+				wsSession.getRemote().sendBytes(msgmap.encode(send));
+				send.clear();
 			}
 		}
 		public void stop() {
@@ -103,23 +129,15 @@ public class WebSocketTransmitter {
 			}
 		}
 
-		private void connect() {
+		private void connect() throws Exception {
 	        WebSocketClient client = new WebSocketClient();
-	        try {
-	            client.start();
-	            ClientUpgradeRequest request = new ClientUpgradeRequest();
-	            client.connect(this, uri, request);
-	            logger.info(String.format("Connecting to : %s", uri));
-	        } catch (Throwable t) {
-	            t.printStackTrace();
-	        }
+	        client.start();
+	        ClientUpgradeRequest request = new ClientUpgradeRequest();
+	        client.connect(this, uri, request);
+	        logger.info(String.format("Connecting to : %s", uri));
 	        synchronized (this) {
 	        	while (wsSession == null) {
-	        		try {
-						this.wait(500);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
+	        		this.wait(500);
 	        	}
 	        }
 	    }
@@ -136,7 +154,13 @@ public class WebSocketTransmitter {
 	    public void onClose(int statusCode, String reason) {
 	    	logger.info(String.format("Connection closed: %d - %s", statusCode, reason));
 	        this.wsSession = null;
-	        connect();
+	        try {
+				connect();
+			} catch (Exception e) {
+				LogRecord rec = new LogRecord(Level.INFO, "Exception while trying to reconnect");
+				rec.setThrown(e);
+				logger.log(rec);
+			}
 	    }
 	    
 
