@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
@@ -20,10 +21,12 @@ import org.eclipse.jetty.websocket.client.WebSocketClient;
 public class WebSocketTransmitter {
 	private final long flushInterval;
 	private final URI uri;
+	private final Logger logger = Logger.getLogger(this.getClass().getName());
 	private final ArrayBlockingQueue<AbstractMessage> queue = new ArrayBlockingQueue<AbstractMessage>(200);
 	private final Worker worker = new Worker();
 	private final Thread workerThread = new Thread(worker, "websocket-transfer");
 	private static final Map<String, WebSocketTransmitter> singletonTransmitters = Collections.synchronizedMap(new HashMap<String, WebSocketTransmitter>());
+	private final MessageMapping msgmap = new MessageMapping();
 	
 	public static WebSocketTransmitter getSingleton(long flushInterval, String uri) throws URISyntaxException {
 		WebSocketTransmitter ret = singletonTransmitters.get(uri);
@@ -35,13 +38,13 @@ public class WebSocketTransmitter {
 	}
 	
 	public WebSocketTransmitter(long flushInterval, String uri) throws URISyntaxException {
-		this.flushInterval = flushInterval;
-		this.uri = new URI(uri);
+		this(flushInterval, new URI(uri));
 	}
 	
-	public WebSocketTransmitter(int flushInterval, URI statUri) {
+	public WebSocketTransmitter(long flushInterval, URI statUri) {
 		this.flushInterval = flushInterval;
 		this.uri = statUri;
+		logger.info(String.format("Configured to transmit to %s every %d milliseconds", uri.toString(), flushInterval));
 	}
 
 	public void start() {
@@ -56,10 +59,10 @@ public class WebSocketTransmitter {
 	}
 	
 	public void queue(AbstractMessage msg) {
-		System.out.println("Queue message" + msg);
+		logger.fine("Queue message type: " + msgmap.map(msg.getClass()));
 		try {
 			while (!queue.offer(msg, flushInterval * 2, TimeUnit.MILLISECONDS)) {
-				System.out.println("queue full, retrying");
+				logger.info("queue full, retrying");
 			}
 		} catch (InterruptedException e) {
 			e.printStackTrace();
@@ -70,7 +73,6 @@ public class WebSocketTransmitter {
 	public class Worker implements Runnable {
 		private boolean running=true;
 		private final ArrayList<AbstractMessage> send = new ArrayList<AbstractMessage>();
-		private final MessageMapping msgmap = new MessageMapping();
 		private Session wsSession;
 		@Override
 		public void run() {
@@ -82,7 +84,7 @@ public class WebSocketTransmitter {
 						if (wsSession == null) continue;
 						queue.drainTo(send);
 						if (send.size() > 0) {
-							System.out.printf("Sending %d messages", send.size());
+							logger.fine(String.format("Sending %d messages", send.size()));
 							wsSession.getRemote().sendBytes(msgmap.encode(send));
 							send.clear();
 						}
@@ -107,7 +109,7 @@ public class WebSocketTransmitter {
 	            client.start();
 	            ClientUpgradeRequest request = new ClientUpgradeRequest();
 	            client.connect(this, uri, request);
-	            System.out.printf("Connecting to : %s%n", uri);
+	            logger.info(String.format("Connecting to : %s", uri));
 	        } catch (Throwable t) {
 	            t.printStackTrace();
 	        }
@@ -124,7 +126,7 @@ public class WebSocketTransmitter {
 		@OnWebSocketConnect
 	    public void onConnect(Session session) {
 	    	synchronized (this) {
-	            System.out.printf("Got connect: %s%n", session);
+	            logger.info(String.format("Got connect: %s", session));
 	            this.wsSession = session;
 	            this.notifyAll();
 			}
@@ -132,7 +134,7 @@ public class WebSocketTransmitter {
 	 
 	    @OnWebSocketClose
 	    public void onClose(int statusCode, String reason) {
-	        System.out.printf("Connection closed: %d - %s%n", statusCode, reason);
+	    	logger.info(String.format("Connection closed: %d - %s", statusCode, reason));
 	        this.wsSession = null;
 	        connect();
 	    }

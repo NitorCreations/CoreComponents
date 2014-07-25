@@ -8,8 +8,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 
 import net.jpountz.lz4.LZ4Compressor;
+import net.jpountz.lz4.LZ4Exception;
 import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.lz4.LZ4FastDecompressor;
 
@@ -19,7 +23,7 @@ import org.msgpack.unpacker.BufferUnpacker;
 
 public class MessageMapping {
 	MessagePack msgpack = new MessagePack();
-
+	private final Logger logger = Logger.getLogger(this.getClass().getName());
 	public enum MessageType {
 		PROC, CPU, MEM, DISK, OUTPUT, LOG, JMX, PROCESSCPU, ACCESS, LONGSTATS, HASH;
 		public String lcName() {
@@ -63,6 +67,7 @@ public class MessageMapping {
 	public Class<? extends AbstractMessage> map(int type) {
 		return messageTypes.get(MessageType.values()[type]);
 	}
+
 	public MessageType map(Class<?> msgclass) {
 		return messageClasses.get(msgclass);
 	}
@@ -102,9 +107,8 @@ public class MessageMapping {
 			try {
 				decompressor.decompress(data, offset + 4, restored , 0, uclen);
 			} catch (Throwable e) {
-				System.out.printf("Received buffer[%d], %d, %d - uncompressed len %d\n", data.length, offset, length, uclen);
-				e.printStackTrace();
-				return new ArrayList<AbstractMessage>();
+				String message = String.format("Failed to parse buffer[%d], %d, %d - uncompressed len %d\n", data.length, offset, length, uclen);
+				throw new IOException(message, e);
 			}
 		}
 		BufferUnpacker unpacker = msgpack.createBufferUnpacker(restored);
