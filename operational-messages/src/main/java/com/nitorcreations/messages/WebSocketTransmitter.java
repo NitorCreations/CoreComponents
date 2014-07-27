@@ -3,6 +3,7 @@ package com.nitorcreations.messages;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -118,7 +119,9 @@ public class WebSocketTransmitter {
 			queue.drainTo(send);
 			if (send.size() > 0) {
 				logger.fine(String.format("Sending %d messages", send.size()));
-				wsSession.getRemote().sendBytes(msgmap.encode(send));
+				ByteBuffer toSend = msgmap.encode(send);
+				logger.fine(String.format("Sending buffer len %d", toSend.capacity()));
+				wsSession.getRemote().sendBytes(toSend);
 				send.clear();
 			}
 		}

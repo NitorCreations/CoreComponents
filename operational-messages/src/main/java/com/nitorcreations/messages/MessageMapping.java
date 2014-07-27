@@ -18,6 +18,7 @@ import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.lz4.LZ4FastDecompressor;
 
 import org.msgpack.MessagePack;
+import org.msgpack.io.EndOfBufferException;
 import org.msgpack.packer.Packer;
 import org.msgpack.unpacker.BufferUnpacker;
 
@@ -86,10 +87,11 @@ public class MessageMapping {
 		int maxCompressedLength = compressor.maxCompressedLength(data.length);
 		byte[] compressed = new byte[maxCompressedLength];
 		int compressedLength = compressor.compress(data, 0, data.length, compressed, 0, maxCompressedLength);
+		logger.finest(String.format("Message data %d bytes, compressed %d bytes", data.length, compressedLength));
 		if (compressedLength >= data.length) {
-	        return ByteBuffer.allocate(4 + data.length).putInt(0).put(data);
+	        return (ByteBuffer) ByteBuffer.allocate(4 + data.length).putInt(0).put(data).flip();
 		}
-        return ByteBuffer.allocate(4 + compressedLength).putInt(compressedLength).put(compressed, 0, compressedLength);
+        return (ByteBuffer) ByteBuffer.allocate(4 + compressedLength).putInt(data.length).put(compressed, 0, compressedLength).flip();
 	}
 
 	public List<AbstractMessage> decode(byte[] data, int offset, int length) throws IOException {
@@ -113,11 +115,10 @@ public class MessageMapping {
 		}
 		BufferUnpacker unpacker = msgpack.createBufferUnpacker(restored);
 		ArrayList<AbstractMessage> ret = new ArrayList<AbstractMessage>();
-		DeployerMessage next = unpacker.read(DeployerMessage.class);
-		while (next != null) {
+		while (unpacker.getReadByteCount() < restored.length) {
+			DeployerMessage next = unpacker.read(DeployerMessage.class);
 			ret.add(msgpack.read(next.message, map(next.type)));
-			next = unpacker.read(DeployerMessage.class);
 		}
-	   return ret;
+		return ret;
 	}
 }
