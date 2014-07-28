@@ -1,6 +1,12 @@
 package com.nitorcreations.clustermetrics;
 
 import java.io.IOException;
+import java.math.BigInteger;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.security.SecureRandom;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -26,12 +32,12 @@ import com.google.gson.Gson;
 
 public class MetricsServlet implements Servlet {
 	private static Node node;
-	
+
 	Map<String, Metric> metrics = new HashMap<String, Metric>();
 	ServletConfig config;
-
+	private SecureRandom random = new SecureRandom();
 	private Settings settings;
-	
+
 	@Override
 	public void init(ServletConfig config) throws ServletException {
 		this.config = config;
@@ -40,11 +46,6 @@ public class MetricsServlet implements Servlet {
 		metrics.put("/requests", new RequestCountMetric());
 		metrics.put("/latency", new RequestDurationMetric());
 		setupElasticSearch(config.getServletContext());
-        node = NodeBuilder.nodeBuilder()
-        		.settings(settings)
-        		.clusterName("liipy-deploy")
-        		.data(true).local(true).node();
-
 	}
 
 	@Override
@@ -78,7 +79,7 @@ public class MetricsServlet implements Servlet {
 				buckets[i++] = Double.parseDouble(next);
 			}
 		}
-		
+
 		SearchResponse response = client.prepareSearch(metric.getIndex(), metric.getIndex())
 				.setQuery(QueryBuilders.rangeQuery("timestamp")
 						.from(start - step)
@@ -107,21 +108,61 @@ public class MetricsServlet implements Servlet {
 
 	@Override
 	public void destroy() {
-
+		node.stop();
 	}
 
 	public static Client getClient() {
-    	return node.client();
-    }
-
-    private void setupElasticSearch(ServletContext context) {
-        ImmutableSettings.Builder settingsBuilder = ImmutableSettings.settingsBuilder();
-        settingsBuilder.put("node.name", context.getInitParameter("node.name"));
-        settingsBuilder.put("path.data", "data/index");
-        settingsBuilder.put("http.enabled", true);
-        settingsBuilder.put("http.port", 5240);
-        this.settings = settingsBuilder.build();
+		return node.client();
 	}
 
+	private void setupElasticSearch(ServletContext context) {
+		ImmutableSettings.Builder settingsBuilder = ImmutableSettings.settingsBuilder();
+		String nodeName = getInitParameter(context, "node.name", getHostName());
+		if (nodeName == null || nodeName.isEmpty() || "localhost".equals(nodeName)) {
+			nodeName = randomNodeId();
+		}
+		settingsBuilder.put("node.name", nodeName);
+		settingsBuilder.put("path.data", getInitParameter(context, "path.data", "data/index"));
+		String httpPort = getInitParameter(context, "http.port", null);
+		if (httpPort != null) {
+			settingsBuilder.put("http.enabled", true);
+			settingsBuilder.put("http.port", Integer.parseInt(httpPort));
+		}
+		this.settings = settingsBuilder.build();
+		node = NodeBuilder.nodeBuilder()
+				.settings(settings)
+				.clusterName(getInitParameter(context, "cluster.name", "metrics"))
+				.data(true).local(true).node();
 
+	}
+
+	public String getInitParameter(ServletContext context, String name, String defaultVal) {
+		String ret = context.getInitParameter(name);
+		if (ret == null || ret.isEmpty()) return defaultVal;
+		return ret;
+	}
+
+	public static String getHostName() {
+		Enumeration<NetworkInterface> interfaces;
+		try {
+			interfaces = NetworkInterface.getNetworkInterfaces();
+			while (interfaces.hasMoreElements()) {
+				NetworkInterface nic = interfaces.nextElement();
+				Enumeration<InetAddress> addresses = nic.getInetAddresses();
+				while (addresses.hasMoreElements()) {
+					InetAddress address = addresses.nextElement();
+					if (!address.isLoopbackAddress()) {
+						return address.getHostName();
+					}
+				}
+			}
+			return "localhost";
+		} catch (SocketException e) {
+			return "localhost";
+		}
+	}
+
+	public String randomNodeId() {
+		return new BigInteger(130, random).toString(32);
+	}
 }

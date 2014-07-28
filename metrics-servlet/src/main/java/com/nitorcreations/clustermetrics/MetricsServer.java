@@ -10,24 +10,15 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.eclipse.jetty.servlet.ServletContextHandler.NO_SECURITY;
 import static org.eclipse.jetty.servlet.ServletContextHandler.NO_SESSIONS;
 
-import java.io.IOException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.Enumeration;
-import java.util.List;
-
-import javax.servlet.DispatcherType;
+import java.net.URISyntaxException;
 
 import org.eclipse.jetty.server.NCSARequestLog;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.handler.HandlerCollection;
 import org.eclipse.jetty.server.handler.RequestLogHandler;
-import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
-import org.eclipse.jetty.util.resource.ResourceCollection;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,7 +51,6 @@ public class MetricsServer {
         setupMetrics(context);
         setupStatistics(context);
         setupProxy(context);
-        setupResourceBases(context, staticResources);
         server.start();
         long end = currentTimeMillis();
         LOG.info("Succesfully started Jetty on port {} in {} seconds in environment {}", port, (end - start) / 1000.0, env);
@@ -73,21 +63,6 @@ public class MetricsServer {
     private void setupProxy(ServletContextHandler context) {
     	context.addServlet(ElasticsearchProxy.class, "/search/*");
 	}
-
-    private void setupResourceBases(final ServletContextHandler context, String staticResources) throws IOException {
-        List<String> resources = new ArrayList<>();
-        for (Enumeration<URL> urls = this.getClass().getClassLoader().getResources("maven/repo.root"); urls.hasMoreElements();) {
-            URL url = urls.nextElement();
-            resources.add(url.toString().replace("maven/repo.root", ""));
-        }
-        LOG.info("maven included from : " + resources.toString());
-        context.setBaseResource(new ResourceCollection(resources.toArray(new String[resources.size()])));
-        ServletHolder holder = context.addServlet(DefaultServlet.class, "/maven/*");
-        holder.setInitParameter("dirAllowed", "true");
-        holder.setInitParameter("gzip", "false");
-        holder.setDisplayName("maven");
-        holder.setInitOrder(1);
-    }
 
     private Server setupServer() {
         Server server = new Server(new QueuedThreadPool(100));
@@ -110,7 +85,7 @@ public class MetricsServer {
         return context;
     }
 
-    private void setupHandlers(final Server server, final ServletContextHandler context) {
+    private void setupHandlers(final Server server, final ServletContextHandler context) throws URISyntaxException {
         HandlerCollection handlers = new HandlerCollection();
         server.setHandler(handlers);
         handlers.addHandler(context);
@@ -119,7 +94,6 @@ public class MetricsServer {
 
 
     private void setupMetrics(final ServletContextHandler context) {
-        context.setInitParameter("node.name",  "liipy-deploy-node1");
         ServletHolder holder = context.addServlet(MetricsServlet.class, "/metrics/*");
         holder.setInitOrder(1);
     }
@@ -129,16 +103,22 @@ public class MetricsServer {
     	context.addServlet(StatisticsServlet.class, "/statistics/*");
     }
     
-    private RequestLogHandler createAccessLogHandler() {
+    private RequestLogHandler createAccessLogHandler() throws URISyntaxException {
         RequestLogHandler requestLogHandler = new RequestLogHandler();
-        NCSARequestLog requestLog = new NCSARequestLog("yyyy_mm_dd.request.log");
-        requestLog.setRetainDays(90);
-        requestLog.setAppend(true);
-        requestLog.setExtended(true);
-        requestLog.setLogTimeZone("Europe/Helsinki");
-        requestLog.setPreferProxiedForAddress(true);
-        requestLog.setLogLatency(true);
-        requestLogHandler.setRequestLog(requestLog);
+    	if (System.getProperty("accesslog.websocket") != null) {
+    		WebsocketRequestLog requestLog = new WebsocketRequestLog(2000, System.getProperty("accesslog.websocket"));
+    		requestLogHandler.setRequestLog(requestLog);
+    		requestLog.setPreferProxiedForAddress(true);
+    	} else {
+    		NCSARequestLog requestLog = new NCSARequestLog("yyyy_mm_dd.request.log");
+    		requestLog.setRetainDays(90);
+    		requestLog.setAppend(true);
+    		requestLog.setExtended(true);
+    		requestLog.setLogTimeZone("Europe/Helsinki");
+    		requestLog.setPreferProxiedForAddress(true);
+    		requestLog.setLogLatency(true);
+    		requestLogHandler.setRequestLog(requestLog);
+    	}
         return requestLogHandler;
     }
 }
