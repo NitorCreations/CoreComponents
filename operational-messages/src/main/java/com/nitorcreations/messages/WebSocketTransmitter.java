@@ -123,6 +123,8 @@ public class WebSocketTransmitter {
 				logger.fine(String.format("Sending buffer len %d", toSend.capacity()));
 				wsSession.getRemote().sendBytes(toSend);
 				send.clear();
+			} else {
+				wsSession.getRemote().sendPing(ByteBuffer.allocate(4).putInt(1234));
 			}
 		}
 		public void stop() {
