@@ -47,10 +47,10 @@ public class MetricsServer {
         Server server = setupServer();
         setupServerConnector(server, port);
         ServletContextHandler context = setupServletContextHandler();
-        setupHandlers(server, context);
         setupMetrics(context);
         setupStatistics(context);
         setupProxy(context);
+        setupHandlers(server, context);
         server.start();
         long end = currentTimeMillis();
         LOG.info("Succesfully started Jetty on port {} in {} seconds in environment {}", port, (end - start) / 1000.0, env);

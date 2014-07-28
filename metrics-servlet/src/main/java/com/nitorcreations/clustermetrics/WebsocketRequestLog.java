@@ -12,26 +12,27 @@ import org.eclipse.jetty.util.annotation.ManagedObject;
 import org.eclipse.jetty.util.component.AbstractLifeCycle;
 
 import com.nitorcreations.messages.AccessLogEntry;
-import com.nitorcreations.messages.MessageMapping;
 import com.nitorcreations.messages.WebSocketTransmitter;
 
 
 @ManagedObject("NCSA standard format request log")
 public class WebsocketRequestLog extends AbstractLifeCycle implements RequestLog {
 	
-	private final WebSocketTransmitter transmitter;
+	private WebSocketTransmitter transmitter;
     private transient PathMap<String> _ignorePathMap = new PathMap<String>();
 	private boolean _preferProxiedForAddress=true;
-	private MessageMapping mapping = new MessageMapping();
-
+	private final long flushInterval;
+	private final String url;
+	
 	public WebsocketRequestLog(long flushInterval, String url) throws URISyntaxException {
 		super();
-		transmitter = WebSocketTransmitter.getSingleton(flushInterval, url);
-		transmitter.start();
+		this.flushInterval = flushInterval;
+		this.url = url;
 	}
 	
 	@Override
 	public void log(Request request, Response response)    {
+		if (transmitter == null) init();
 		AccessLogEntry msg = new AccessLogEntry();
 		if (_ignorePathMap != null && _ignorePathMap.getMatch(request.getRequestURI()) != null)
 			return;
@@ -72,5 +73,13 @@ public class WebsocketRequestLog extends AbstractLifeCycle implements RequestLog
 
 	public void setPreferProxiedForAddress(boolean b) {
 		this._preferProxiedForAddress = b;
+	}
+	private void init() {
+		try {
+			transmitter = WebSocketTransmitter.getSingleton(flushInterval, url);
+		} catch (URISyntaxException e) {
+			e.printStackTrace();
+		}
+		transmitter.start();
 	}
 }
