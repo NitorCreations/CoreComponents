@@ -132,6 +132,7 @@ public class WebSocketTransmitter {
 				this.running = false;
 				this.notifyAll();
 			}
+			this.wsSession.close();
 		}
 
 		private void connect() throws Exception {
