@@ -176,6 +176,16 @@
       <artifactId>websocket-client</artifactId>
       <version>9.2.1.v20140609</version>
     </dependency>
+    <dependency>
+	  <groupId>ch.qos.logback</groupId>
+	  <artifactId>logback-core</artifactId>
+	  <version>1.1.2</version>
+    </dependency>
+    <dependency>
+	  <groupId>ch.qos.logback</groupId>
+	  <artifactId>logback-classic</artifactId>
+	  <version>1.1.2</version>
+    </dependency>
   </dependencies>
   <reporting>
     <plugins>
