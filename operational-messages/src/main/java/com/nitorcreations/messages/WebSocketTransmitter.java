@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -38,6 +39,11 @@ public class WebSocketTransmitter {
 			singletonTransmitters.put(uri, ret);
 		}
 		return ret;
+	}
+	public static WebSocketTransmitter getSingleton(Properties properties) throws URISyntaxException {
+		String statUri = properties.getProperty("statistics.uri", "ws://localhost:5120/statistics");
+		long flushInterval = Long.parseLong(properties.getProperty("statistics.flushinterval", "5000"));
+		return getSingleton(flushInterval, statUri);
 	}
 	
 	public WebSocketTransmitter(long flushInterval, String uri) throws URISyntaxException {
@@ -168,7 +174,6 @@ public class WebSocketTransmitter {
 				logger.log(rec);
 			}
 	    }
-	    
-
 	}
+
 }
