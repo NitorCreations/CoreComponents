@@ -22,9 +22,6 @@ import javax.management.ReflectionException;
 import javax.management.openmbean.CompositeDataSupport;
 
 import org.apache.commons.beanutils.PropertyUtils;
-import org.eclipse.jetty.websocket.api.Session;
-import org.eclipse.jetty.websocket.api.StatusCode;
-import org.eclipse.jetty.websocket.api.annotations.WebSocket;
 import org.hyperic.sigar.Cpu;
 import org.hyperic.sigar.FileSystem;
 import org.hyperic.sigar.FileSystemUsage;
@@ -39,7 +36,6 @@ import com.nitorcreations.messages.DiskUsage;
 import com.nitorcreations.messages.GcInfo;
 import com.nitorcreations.messages.JmxMessage;
 import com.nitorcreations.messages.Memory;
-import com.nitorcreations.messages.MessageMapping;
 import com.nitorcreations.messages.ProcessCPU;
 import com.nitorcreations.messages.Processes;
 import com.nitorcreations.messages.ThreadInfoMessage;
@@ -48,11 +44,10 @@ import com.nitorcreations.messages.WebSocketTransmitter;
 public class StatsSender implements Runnable {
 	private AtomicBoolean running = new AtomicBoolean(true);
 	private final WebSocketTransmitter transmitter;
-	private MessageMapping mapping = new MessageMapping();
 	private MBeanServerConnection mBeanServerConnection;
-	private int pid;
+	private long pid;
 	
-	public StatsSender(WebSocketTransmitter transmitter, MBeanServerConnection mBeanServerConnection, int pid) throws URISyntaxException {
+	public StatsSender(WebSocketTransmitter transmitter, MBeanServerConnection mBeanServerConnection, long pid) throws URISyntaxException {
 		this.transmitter = transmitter;
 		this.mBeanServerConnection = mBeanServerConnection;
 		this.pid = pid;

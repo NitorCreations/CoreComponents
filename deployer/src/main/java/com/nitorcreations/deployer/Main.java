@@ -6,8 +6,14 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.net.MalformedURLException;
+import java.net.Proxy;
+import java.net.Proxy.Type;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
+import java.net.URLConnection;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,6 +24,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.management.MBeanServerConnection;
+import javax.management.RuntimeErrorException;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
@@ -41,11 +48,6 @@ import org.eclipse.aether.util.graph.visitor.PreorderNodeListGenerator;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketConnect;
-import org.kohsuke.args4j.Argument;
-import org.kohsuke.args4j.CmdLineException;
-import org.kohsuke.args4j.CmdLineParser;
-import org.kohsuke.args4j.Option;
-import org.kohsuke.args4j.OptionHandlerFilter;
 
 import sun.jvmstat.monitor.Monitor;
 import sun.jvmstat.monitor.MonitoredHost;
@@ -60,125 +62,62 @@ import com.sun.tools.attach.VirtualMachine;
 
 public class Main {
     private static final String LOCAL_CONNECTOR_ADDRESS_PROP = "com.sun.management.jmxremote.localConnectorAddress";
-
-	private static String remoteRepo;
-	private static String localRepo;
 	private Logger log = Logger.getLogger(this.getClass().getCanonicalName());
-	static {
-		remoteRepo = System.getProperty("deployer.remote.repository", "http://localhost:5120/maven");
-		localRepo = System.getProperty("deployer.local.repository", System.getProperty("user.home") + File.separator + ".deployer" + File.separator + "repository");
-		File libDir = new File(new File(localRepo), "lib");
-		System.setProperty("java.library.path", libDir.getAbsolutePath());
-		extractNativeLib(libDir);
-	}
-
-	private final URI statUri;
-	private final CountDownLatch closeLatch = new CountDownLatch(1);
-
-	@Option( name="-t", usage="Download transitive dependencies" )
-	private boolean transitive = false;
-
-	@Option(name="-m", handler=LaunchMethodHandler.class, usage="Launch method" )
-	private LaunchMethod method = LaunchMethod.UBERJAR;
 	
-	@Argument
-    private List<String> arguments = new ArrayList<String>();
-	private File rootJar;
-	private Session wsSession;
-
-	private int pid;
-
-	public Main() throws URISyntaxException {
-		URI repoUri = new URI(remoteRepo);
-		String path = "/statistics";
-		if (System.getenv("INSTANCE_ID") != null) {
-			path += "/" + System.getenv("INSTANCE_ID");
-		}
-		statUri = new URI("ws", null, repoUri.getHost(), repoUri.getPort(), path, null, null);
-	}
+	public Main() {	}
+	
 	public static void main(String[] args) throws URISyntaxException {
 		new Main().doMain(args);
 	}
 
 	public void doMain(String[] args) {
-		CmdLineParser parser = new CmdLineParser(this);
-		parser.setUsageWidth(80);
-
+		Properties launchProperties = new Properties();
+		if (args.length != 1) usage("Exactly one argument expected"); 
 		try {
-			parser.parseArgument(args);
-			if( arguments.isEmpty() )
-				throw new CmdLineException(parser,"No argument is given");
-		} catch( CmdLineException e ) {
-			System.err.println(e.getMessage());
-			System.err.println("java SampleMain [options...] arguments...");
-			parser.printUsage(System.err);
-			System.err.println();
-			System.err.println(" Example: java SampleMain"+parser.printExample(OptionHandlerFilter.ALL));
-			return;
-		}
-		Dependency dependency = new Dependency( new DefaultArtifact( arguments.get(0) ), "runtime" );
-		RepositorySystem system = GuiceRepositorySystemFactory.newRepositorySystem();
-		LocalRepository local = new LocalRepository(localRepo);
-		DefaultRepositorySystemSession session = MavenRepositorySystemUtils.newSession();
-		session.setLocalRepositoryManager(system.newLocalRepositoryManager(session, local));
-		RemoteRepository remote = new RemoteRepository.Builder("deployer" , "default", remoteRepo).build();
-		if (transitive) {
-			CollectRequest collectRequest = new CollectRequest();
-			collectRequest.setRoot( dependency );
-			collectRequest.addRepository( remote );
-			DependencyNode node;
-			try {
-				node = system.collectDependencies( session, collectRequest ).getRoot();
-				DependencyRequest dependencyRequest = new DependencyRequest();
-				dependencyRequest.setRoot( node );
-				system.resolveDependencies( session, dependencyRequest  );
-				PreorderNodeListGenerator nlg = new PreorderNodeListGenerator();
-				rootJar = node.getArtifact().getFile();
-				node.accept( nlg );
-			}  catch (DependencyResolutionException e) {
-				e.printStackTrace();
-				System.exit(1);
-			} catch (DependencyCollectionException e1) {
-				e1.printStackTrace();
-				System.exit(1);
+			URL propertyURL = new URL(args[0]);
+			Proxy p = resolveProxy(propertyURL.getProtocol());
+			URLConnection conn; 
+			if (p == null) {
+				conn = propertyURL.openConnection();
+			} else {
+				conn = propertyURL.openConnection(p);
 			}
-		} else {
-			ArtifactRequest req = new ArtifactRequest();
-			req.setArtifact(dependency.getArtifact());
-			req.addRepository(remote);
-			try {
-				ArtifactResult result = system.resolveArtifact(session, req);
-				rootJar = result.getArtifact().getFile();
-				System.out.println(rootJar.getAbsolutePath());
-			} catch (ArtifactResolutionException e) {
-				e.printStackTrace();
-				System.exit(1);
-			}
+			conn.setDoInput(true);
+			conn.connect();
+			launchProperties.load(conn.getInputStream());
+		} catch (IOException e) {
+			usage(e.getMessage());
 		}
-        WebSocketTransmitter transmitter = new WebSocketTransmitter(5000, statUri);
-		StatsSender statsSender;
+		extractNativeLib(launchProperties);
+		WebSocketTransmitter transmitter = null;
+        try {
+        	transmitter = WebSocketTransmitter.getSingleton(launchProperties);
+		} catch (URISyntaxException e) {
+			usage(e.getMessage());
+		}
+        LaunchMethod launcher = null;
+        try {
+        	launcher = LaunchMethod.TYPE.valueOf(launchProperties.getProperty(LaunchMethod.PROPERTY_KEY_LAUNCH_METHOD)).getLauncher();
+        } catch (Throwable t) {
+        	usage(t.getMessage());
+        }
+        launcher.setProperties(launchProperties);
+        Thread executable = new Thread(launcher);
+        executable.start();
+        long pid = launcher.getProcessId();
 		try {
-			File java = new File(new File(new File(System.getProperty("java.home")), "bin"), "java");
-			ProcessBuilder pb = new ProcessBuilder(java.getAbsolutePath(),
-					"-Daccesslog.websocket=" + statUri.toString(), "-jar", rootJar.getAbsolutePath() );
-			pb.environment().putAll(System.getenv());
-			pb.environment().put("DEV", "1");
-			System.out.printf("Starting %s%n", pb.command().toString());
-			Process p = pb.start();
-			StreamLinePumper stdout = new StreamLinePumper(p.getInputStream(), transmitter, "STDOUT");
-			StreamLinePumper stderr = new StreamLinePumper(p.getErrorStream(), transmitter, "STDERR");
-			new Thread(stdout, "stdout").start();
-			new Thread(stderr, "stderr").start();
-			Thread.sleep(5000);
-			statsSender = new StatsSender(transmitter, getMBeanServerConnection(), pid);
-			Thread t = new Thread(statsSender);
-			t.start();
+			StatsSender statsSender = new StatsSender(transmitter, getMBeanServerConnection(launcher.getProcessId()), pid);
+			Thread statThread = new Thread(statsSender);
+			statThread.start();
 		} catch (Exception e) {
-			e.printStackTrace();
+        	usage(e.getMessage());
 		}
 	}
 	
-	private static void extractNativeLib(File libDir) {
+	private static void extractNativeLib(Properties launchProperties) {
+		String localRepo = launchProperties.getProperty("deployer.local.repository", System.getProperty("user.home") + File.separator + ".deployer" + File.separator + "repository");
+		File libDir = new File(new File(localRepo), "lib");
+		System.setProperty("java.library.path", libDir.getAbsolutePath());
 		String arch = System.getProperty("os.arch");
 		String os = System.getProperty("os.name").toLowerCase();
 		//libsigar-amd64-linux-1.6.4.so
@@ -212,119 +151,102 @@ public class Main {
 			}
 		}
 	}
-    @OnWebSocketConnect
-    public void onConnect(Session session) {
-    	synchronized (this) {
-            System.out.printf("Got connect: %s%n", session);
-            this.wsSession = session;
-            this.notifyAll();
-		}
-    }
- 
-    @OnWebSocketClose
-    public void onClose(int statusCode, String reason) {
-        System.out.printf("Connection closed: %d - %s%n", statusCode, reason);
-        this.wsSession = null;
-        this.closeLatch.countDown();
-    }
-	public Session getSession() {
-		return wsSession;
-	}
 	
-    public MBeanServerConnection getMBeanServerConnection() throws Exception {
+    public MBeanServerConnection getMBeanServerConnection(long lvmid) throws Exception {
         String host = null;
         MonitoredHost monitoredHost = MonitoredHost.getMonitoredHost(host);
 
-        Set<Integer> vms = monitoredHost.activeVms();
-        for (Integer next : vms) {
-            int lvmid = next.intValue();
-            log.fine("Inspecting VM " + lvmid);
-            MonitoredVm vm = null;
-            String vmidString = "//" + lvmid + "?mode=r";
-            try {
-                VmIdentifier id = new VmIdentifier(vmidString);
-                vm = monitoredHost.getMonitoredVm(id, 0);
-            } catch (URISyntaxException e) {
-                // Should be able to generate valid URLs
-                assert false;
-            } catch (Exception e) {
-            } finally {
-                if (vm == null) {
-                	log.fine("Could note get Monitor for VM " + lvmid);
-                	continue;
-                }
-            }
-            
-            Monitor classPath = vm.findByName("java.property.java.class.path");
-            String classPathValue = classPath.getValue().toString()
-                    .split(File.pathSeparator)[0];
-
-            log.finer("Classpath for VM " + lvmid + ": " + classPathValue);
-
-            if (classPathValue.contains(rootJar.getName())
-                && classPathValue.contains(localRepo)) {
-            	pid = lvmid;
-                log.finer("VM " + lvmid + " is a our vm");
-                Monitor command = vm.findByName("sun.rt.javaCommand");
-                String lcCommandStr = command.getValue().toString()
-                        .toLowerCase();
-
-                log.finer("Command for beanserver VM " + lvmid + ": " + lcCommandStr);
-                
-                try {
-                	VirtualMachine attachedVm = VirtualMachine
-                			.attach("" + lvmid);
-                	String home = attachedVm.getSystemProperties()
-                			.getProperty("java.home");
-
-                	// Normally in ${java.home}/jre/lib/management-agent.jar but might
-                	// be in ${java.home}/lib in build environments.
-                	File f = Paths.get(home, "jre", "lib", "management-agent.jar").toFile();
-                	if (!f.exists()) {
-                    	f = Paths.get(home,  "lib", "management-agent.jar").toFile();
-                		if (!f.exists()) {
-                			throw new IOException("Management agent not found");
-                		}
-                	}
-
-                	String agent = f.getCanonicalPath();
-                	log.finer("Found agent for VM " + lvmid + ": " + agent);
-                	try {
-                		attachedVm
-                		.loadAgent(agent,
-                				"com.sun.management.jmxremote");
-                	} catch (AgentLoadException x) {
-                		IOException ioe = new IOException(x
-                				.getMessage());
-                		ioe.initCause(x);
-                		throw ioe;
-                	} catch (AgentInitializationException x) {
-                		IOException ioe = new IOException(x
-                				.getMessage());
-                		ioe.initCause(x);
-                		throw ioe;
-                	}
-                	Properties agentProps = attachedVm
-                			.getAgentProperties();
-                	String address = (String) agentProps
-                			.get(LOCAL_CONNECTOR_ADDRESS_PROP);
-                	JMXServiceURL url = new JMXServiceURL(address);
-                	JMXConnector jmxc = JMXConnectorFactory
-                			.connect(url, null);
-                	MBeanServerConnection mbsc = jmxc
-                			.getMBeanServerConnection();
-                	vm.detach();                            
-                	return mbsc;
-                } catch (AttachNotSupportedException x) {
-                	log.log(Level.WARNING,
-                			"Not attachable", x);
-                } catch (IOException x) {
-                	log.log(Level.WARNING,
-                			"Failed to get JMX connection", x);
-                }
-            }
+        log.fine("Inspecting VM " + lvmid);
+        MonitoredVm vm = null;
+        String vmidString = "//" + lvmid + "?mode=r";
+        try {
+        	VmIdentifier id = new VmIdentifier(vmidString);
+        	vm = monitoredHost.getMonitoredVm(id, 0);
+        } catch (URISyntaxException e) {
+        	// Should be able to generate valid URLs
+        	assert false;
+        } catch (Exception e) {
+        } finally {
+        	if (vm == null) {
+        		throw new RuntimeException("Could note get Monitor for VM " + lvmid);
+        	}
         }
+
+        log.finer("VM " + lvmid + " is a our vm");
+        Monitor command = vm.findByName("sun.rt.javaCommand");
+        String lcCommandStr = command.getValue().toString()
+        		.toLowerCase();
+
+        log.finer("Command for beanserver VM " + lvmid + ": " + lcCommandStr);
+
+        try {
+        	VirtualMachine attachedVm = VirtualMachine
+        			.attach("" + lvmid);
+        	String home = attachedVm.getSystemProperties()
+        			.getProperty("java.home");
+
+        	// Normally in ${java.home}/jre/lib/management-agent.jar but might
+        	// be in ${java.home}/lib in build environments.
+        	File f = Paths.get(home, "jre", "lib", "management-agent.jar").toFile();
+        	if (!f.exists()) {
+        		f = Paths.get(home,  "lib", "management-agent.jar").toFile();
+        		if (!f.exists()) {
+        			throw new IOException("Management agent not found");
+        		}
+        	}
+
+        	String agent = f.getCanonicalPath();
+        	log.finer("Found agent for VM " + lvmid + ": " + agent);
+        	try {
+        		attachedVm
+        		.loadAgent(agent,
+        				"com.sun.management.jmxremote");
+        	} catch (AgentLoadException x) {
+        		IOException ioe = new IOException(x
+        				.getMessage());
+        		ioe.initCause(x);
+        		throw ioe;
+        	} catch (AgentInitializationException x) {
+        		IOException ioe = new IOException(x
+        				.getMessage());
+        		ioe.initCause(x);
+        		throw ioe;
+        	}
+        	Properties agentProps = attachedVm
+        			.getAgentProperties();
+        	String address = (String) agentProps
+        			.get(LOCAL_CONNECTOR_ADDRESS_PROP);
+        	JMXServiceURL url = new JMXServiceURL(address);
+        	JMXConnector jmxc = JMXConnectorFactory
+        			.connect(url, null);
+        	MBeanServerConnection mbsc = jmxc
+        			.getMBeanServerConnection();
+        	vm.detach();                            
+        	return mbsc;
+        } catch (AttachNotSupportedException x) {
+        	log.log(Level.WARNING,
+        			"Not attachable", x);
+        } catch (IOException x) {
+        	log.log(Level.WARNING,
+        			"Failed to get JMX connection", x);
+        }
+
         return null;
     }
-
+    
+    private static void usage(String error) {
+    	System.err.println(error);
+    	System.err.println(Main.class.getName() + " [property-url]");
+    	System.exit(1);
+    }
+    
+    private static Proxy resolveProxy(String proto) throws MalformedURLException {
+    	String proxyUrl = System.getenv(proto.toLowerCase() + "_proxy");
+    	if (proxyUrl == null) {
+    		proxyUrl = System.getenv(proto.toUpperCase() + "_PROXY");
+    	}
+    	if (proxyUrl == null) return null;
+    	URL proxyAddr = new URL(proxyUrl);
+    	return new Proxy(Type.HTTP, new InetSocketAddress(proxyAddr.getHost(), proxyAddr.getPort()));
+    }
 }
