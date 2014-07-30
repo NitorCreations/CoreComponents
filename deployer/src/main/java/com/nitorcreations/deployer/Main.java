@@ -101,6 +101,7 @@ public class Main {
 		} catch (URISyntaxException e) {
 			usage(e.getMessage());
 		}
+        
         LaunchMethod launcher = null;
         try {
         	launcher = LaunchMethod.TYPE.valueOf(launchProperties.getProperty(LaunchMethod.PROPERTY_KEY_LAUNCH_METHOD)).getLauncher();

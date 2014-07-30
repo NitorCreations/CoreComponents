@@ -22,18 +22,20 @@ import org.eclipse.aether.util.graph.visitor.PreorderNodeListGenerator;
 
 public class DependencyLauncher extends AbstractLauncher implements LaunchMethod {
 	public static final String PROPERTY_KEY_PREFIX_JAVA_ARGS = "deployer.java.arg";
-	public static final String PROPERTY_KEY_LOCAL_REPOSITORY = "deployer.local.repository";
-	public static final String PROPERTY_KEY_REMOTE_REPOSITORY = "deployer.remote.repository";
 	public static final String PROPERTY_KEY_RESOLVE_TRANSITIVE = "deployer.artifact.transitive";
+	public static final String PROPERTY_KEY_MAIN_CLASS = "deployer.launch.mainclass";
 	String artifactCoords;
 	private String localRepo;
 	private boolean transitive = false;
 	private String statUri;
 	private String remoteRepo;
+	private AetherDownloader downloader;
+	private String mainClass;
 	
 	@Override
 	public void run() {
 		File rootJar;
+		String classpath;
 		Dependency dependency = new Dependency( new DefaultArtifact( artifactCoords ), "runtime" );
 		RepositorySystem system = GuiceRepositorySystemFactory.newRepositorySystem();
 		LocalRepository local = new LocalRepository(localRepo);
@@ -41,36 +43,21 @@ public class DependencyLauncher extends AbstractLauncher implements LaunchMethod
 		session.setLocalRepositoryManager(system.newLocalRepositoryManager(session, local));
 		RemoteRepository remote = new RemoteRepository.Builder("deployer" , "default", remoteRepo).build();
 		if (transitive) {
-			CollectRequest collectRequest = new CollectRequest();
-			collectRequest.setRoot( dependency );
-			collectRequest.addRepository( remote );
-			DependencyNode node;
-			try {
-				node = system.collectDependencies( session, collectRequest ).getRoot();
-				DependencyRequest dependencyRequest = new DependencyRequest();
-				dependencyRequest.setRoot( node );
-				system.resolveDependencies( session, dependencyRequest  );
-				PreorderNodeListGenerator nlg = new PreorderNodeListGenerator();
-				rootJar = node.getArtifact().getFile();
-				node.accept( nlg );
-			}  catch (DependencyResolutionException | DependencyCollectionException e) {
-				throw new RuntimeException("Failed to resolve (transitively) " + artifactCoords, e);
-			}
+			classpath = downloader.downloadTransitive(artifactCoords);
+			rootJar = new File(classpath.split(File.pathSeparator)[0]);
 		} else {
-			ArtifactRequest req = new ArtifactRequest();
-			req.setArtifact(dependency.getArtifact());
-			req.addRepository(remote);
-			try {
-				ArtifactResult result = system.resolveArtifact(session, req);
-				rootJar = result.getArtifact().getFile();
-				System.out.println(rootJar.getAbsolutePath());
-			} catch (ArtifactResolutionException e) {
-				throw new RuntimeException("Failed to resolve " + artifactCoords, e);
-			}
+			rootJar = downloader.downloadArtifact(artifactCoords);
+			classpath = rootJar.getAbsolutePath();
 		}
 		launchArgs.add("-Daccesslog.websocket=" + statUri.toString());
-		launchArgs.add("-jar");
-		launchArgs.add(rootJar.getAbsolutePath());
+		if (transitive || !mainClass.isEmpty()) {
+			launchArgs.add("-cp");
+			launchArgs.add(classpath);
+			launchArgs.add(mainClass);
+		} else {
+			launchArgs.add("-jar");
+			launchArgs.add(rootJar.getAbsolutePath());
+		}
 		addLauncherArgs(launchProperties, PROPERTY_KEY_PREFIX_LAUNCH_ARGS);
 		launch(extraEnv, getLaunchArgs());
 	}
@@ -78,10 +65,11 @@ public class DependencyLauncher extends AbstractLauncher implements LaunchMethod
 	@Override
 	public void setProperties(Properties properties) {
 		super.setProperties(properties);
+		downloader = new AetherDownloader();
+		downloader.setProperties(properties);
 		artifactCoords = properties.getProperty("launch.artifact");
-		localRepo = properties.getProperty(PROPERTY_KEY_LOCAL_REPOSITORY, System.getProperty("user.home") + File.separator + ".deployer" + File.separator + "repository");
-		remoteRepo = properties.getProperty(PROPERTY_KEY_REMOTE_REPOSITORY, "http://localhost:5120/maven");
 		transitive = Boolean.valueOf(properties.getProperty(PROPERTY_KEY_RESOLVE_TRANSITIVE, "false"));
+		mainClass = properties.getProperty(PROPERTY_KEY_MAIN_CLASS, "");
 		File javaBin = new File(new File(System.getProperty("java.home")), "bin");
 		File java = null;
 		if (System.getProperty("os.name").toLowerCase().contains("win")) {
