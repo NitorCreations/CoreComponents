@@ -1,6 +1,9 @@
 package com.nitorcreations.deployer;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -48,6 +51,8 @@ import org.eclipse.aether.util.graph.visitor.PreorderNodeListGenerator;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketConnect;
+import org.kamranzafar.jtar.TarEntry;
+import org.kamranzafar.jtar.TarInputStream;
 
 import sun.jvmstat.monitor.Monitor;
 import sun.jvmstat.monitor.MonitoredHost;
@@ -62,6 +67,7 @@ import com.sun.tools.attach.VirtualMachine;
 
 public class Main {
     private static final String LOCAL_CONNECTOR_ADDRESS_PROP = "com.sun.management.jmxremote.localConnectorAddress";
+    public static final String LAUNCH_PROPERTY_FILE = "launch.properties";
 	private Logger log = Logger.getLogger(this.getClass().getCanonicalName());
 	
 	public Main() {	}
@@ -101,6 +107,12 @@ public class Main {
         } catch (Throwable t) {
         	usage(t.getMessage());
         }
+        File propsFile = new File(LAUNCH_PROPERTY_FILE);
+        try {
+			launchProperties.store(new FileOutputStream(propsFile), null);
+		} catch (IOException e) {
+        	usage(e.getMessage());
+		}
         launcher.setProperties(launchProperties);
         Thread executable = new Thread(launcher);
         executable.start();

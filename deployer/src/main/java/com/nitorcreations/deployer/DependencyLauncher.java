@@ -21,6 +21,7 @@ import org.eclipse.aether.resolution.DependencyResolutionException;
 import org.eclipse.aether.util.graph.visitor.PreorderNodeListGenerator;
 
 public class DependencyLauncher extends AbstractLauncher implements LaunchMethod {
+	public static final String PROPERTY_KEY_PREFIX_JAVA_ARGS = "deployer.java.arg";
 	public static final String PROPERTY_KEY_LOCAL_REPOSITORY = "deployer.local.repository";
 	public static final String PROPERTY_KEY_REMOTE_REPOSITORY = "deployer.remote.repository";
 	public static final String PROPERTY_KEY_RESOLVE_TRANSITIVE = "deployer.artifact.transitive";
@@ -67,9 +68,11 @@ public class DependencyLauncher extends AbstractLauncher implements LaunchMethod
 				throw new RuntimeException("Failed to resolve " + artifactCoords, e);
 			}
 		}
-		File java = new File(new File(new File(System.getProperty("java.home")), "bin"), "java");
-		launch(java.getAbsolutePath(), "-Daccesslog.websocket=" + statUri.toString(), 
-				"-jar", rootJar.getAbsolutePath());
+		launchArgs.add("-Daccesslog.websocket=" + statUri.toString());
+		launchArgs.add("-jar");
+		launchArgs.add(rootJar.getAbsolutePath());
+		addLauncherArgs(launchProperties, PROPERTY_KEY_PREFIX_LAUNCH_ARGS);
+		launch(extraEnv, getLaunchArgs());
 	}
 
 	@Override
@@ -79,6 +82,14 @@ public class DependencyLauncher extends AbstractLauncher implements LaunchMethod
 		localRepo = properties.getProperty(PROPERTY_KEY_LOCAL_REPOSITORY, System.getProperty("user.home") + File.separator + ".deployer" + File.separator + "repository");
 		remoteRepo = properties.getProperty(PROPERTY_KEY_REMOTE_REPOSITORY, "http://localhost:5120/maven");
 		transitive = Boolean.valueOf(properties.getProperty(PROPERTY_KEY_RESOLVE_TRANSITIVE, "false"));
+		File javaBin = new File(new File(System.getProperty("java.home")), "bin");
+		File java = null;
+		if (System.getProperty("os.name").toLowerCase().contains("win")) {
+			java = new File(javaBin, "java.exe");
+		} else {
+			java = new File(javaBin, "java");
+		}
+		launchArgs.add(java.getAbsolutePath());
+		addLauncherArgs(properties, PROPERTY_KEY_PREFIX_JAVA_ARGS);
 	}
-
 }
