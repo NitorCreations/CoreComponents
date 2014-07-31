@@ -16,11 +16,10 @@ import org.hyperic.sigar.ptql.ProcessQuery;
 import org.hyperic.sigar.ptql.ProcessQueryFactory;
 
 import com.nitorcreations.messages.WebSocketTransmitter;
+import static com.nitorcreations.deployer.PropertyKeys.*;
 
 
 public abstract class AbstractLauncher implements LaunchMethod {
-	public static final String PROPERTY_KEY_PREFIX_LAUNCH_ARGS = "deployer.launch.arg";
-	public static final String PROPERTY_KEY_WDIR = "deployer.launch.wdir";
 	protected final String PROCESS_IDENTIFIER = new BigInteger(130, new SecureRandom()).toString(32);
 	protected final Set<String> launchArgs = new LinkedHashSet<String>();
 	protected Properties launchProperties;

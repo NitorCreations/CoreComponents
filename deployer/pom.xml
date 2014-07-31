@@ -276,9 +276,14 @@
       <version>2.2.4</version>
     </dependency>
     <dependency>
-      <groupId>org.kamranzafar</groupId>
-      <artifactId>jtar</artifactId>
-      <version>2.2</version>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-compress</artifactId>
+      <version>1.8.1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.codehaus.swizzle</groupId>
+      <artifactId>swizzle-stream</artifactId>
+      <version>1.6.2</version>
     </dependency>
     <dependency>
 	  <groupId>com.sun</groupId>

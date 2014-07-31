@@ -20,9 +20,9 @@ import org.eclipse.aether.resolution.DependencyRequest;
 import org.eclipse.aether.resolution.DependencyResolutionException;
 import org.eclipse.aether.util.graph.visitor.PreorderNodeListGenerator;
 
+import static com.nitorcreations.deployer.PropertyKeys.*;
+
 public class AetherDownloader {
-	public static final String PROPERTY_KEY_LOCAL_REPOSITORY = "deployer.local.repository";
-	public static final String PROPERTY_KEY_REMOTE_REPOSITORY = "deployer.remote.repository";
 	private String localRepo;
 	private String remoteRepo;
 	private LocalRepository local;

@@ -1,9 +1,6 @@
 package com.nitorcreations.deployer;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -13,46 +10,18 @@ import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
 import java.net.Proxy;
 import java.net.Proxy.Type;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Properties;
-import java.util.Set;
-import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.management.MBeanServerConnection;
-import javax.management.RuntimeErrorException;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
-
-import org.apache.maven.repository.internal.MavenRepositorySystemUtils;
-import org.eclipse.aether.DefaultRepositorySystemSession;
-import org.eclipse.aether.RepositorySystem;
-import org.eclipse.aether.artifact.DefaultArtifact;
-import org.eclipse.aether.collection.CollectRequest;
-import org.eclipse.aether.collection.DependencyCollectionException;
-import org.eclipse.aether.graph.Dependency;
-import org.eclipse.aether.graph.DependencyNode;
-import org.eclipse.aether.repository.LocalRepository;
-import org.eclipse.aether.repository.RemoteRepository;
-import org.eclipse.aether.resolution.ArtifactRequest;
-import org.eclipse.aether.resolution.ArtifactResolutionException;
-import org.eclipse.aether.resolution.ArtifactResult;
-import org.eclipse.aether.resolution.DependencyRequest;
-import org.eclipse.aether.resolution.DependencyResolutionException;
-import org.eclipse.aether.util.graph.visitor.PreorderNodeListGenerator;
-import org.eclipse.jetty.websocket.api.Session;
-import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
-import org.eclipse.jetty.websocket.api.annotations.OnWebSocketConnect;
-import org.kamranzafar.jtar.TarEntry;
-import org.kamranzafar.jtar.TarInputStream;
 
 import sun.jvmstat.monitor.Monitor;
 import sun.jvmstat.monitor.MonitoredHost;
@@ -181,7 +150,7 @@ public class Main {
         } catch (Exception e) {
         } finally {
         	if (vm == null) {
-        		throw new RuntimeException("Could note get Monitor for VM " + lvmid);
+        		return null;
         	}
         }
 
@@ -211,29 +180,17 @@ public class Main {
         	String agent = f.getCanonicalPath();
         	log.finer("Found agent for VM " + lvmid + ": " + agent);
         	try {
-        		attachedVm
-        		.loadAgent(agent,
-        				"com.sun.management.jmxremote");
+        		attachedVm.loadAgent(agent,	"com.sun.management.jmxremote");
         	} catch (AgentLoadException x) {
-        		IOException ioe = new IOException(x
-        				.getMessage());
-        		ioe.initCause(x);
-        		throw ioe;
+        		return null;
         	} catch (AgentInitializationException x) {
-        		IOException ioe = new IOException(x
-        				.getMessage());
-        		ioe.initCause(x);
-        		throw ioe;
+        		return null;
         	}
-        	Properties agentProps = attachedVm
-        			.getAgentProperties();
-        	String address = (String) agentProps
-        			.get(LOCAL_CONNECTOR_ADDRESS_PROP);
+        	Properties agentProps = attachedVm.getAgentProperties();
+        	String address = (String) agentProps.get(LOCAL_CONNECTOR_ADDRESS_PROP);
         	JMXServiceURL url = new JMXServiceURL(address);
-        	JMXConnector jmxc = JMXConnectorFactory
-        			.connect(url, null);
-        	MBeanServerConnection mbsc = jmxc
-        			.getMBeanServerConnection();
+        	JMXConnector jmxc = JMXConnectorFactory.connect(url, null);
+        	MBeanServerConnection mbsc = jmxc.getMBeanServerConnection();
         	vm.detach();                            
         	return mbsc;
         } catch (AttachNotSupportedException x) {

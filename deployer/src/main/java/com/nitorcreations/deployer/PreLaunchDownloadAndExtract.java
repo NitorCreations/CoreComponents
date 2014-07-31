@@ -5,14 +5,22 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.net.URLConnection;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.Set;
 
-import org.kamranzafar.jtar.TarEntry;
-import org.kamranzafar.jtar.TarInputStream;
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+
+import static com.nitorcreations.deployer.PropertyKeys.*;
 
 public class PreLaunchDownloadAndExtract {
 	private static Map<Integer, PosixFilePermission> perms = new HashMap<Integer, PosixFilePermission>();
@@ -29,17 +37,17 @@ public class PreLaunchDownloadAndExtract {
 		perms.put(0400, PosixFilePermission.OWNER_READ);
 	}
 
-	private void extractTar(File tarFile, File destFolder) throws Exception {
+	private void extractTar(InputStream in, File destFolder) throws Exception {
 		// Create a TarInputStream
-		TarInputStream tis = new TarInputStream(new BufferedInputStream(new FileInputStream(tarFile)));
-		TarEntry entry;
+		TarArchiveInputStream tis = new TarArchiveInputStream(new BufferedInputStream(in));
+		TarArchiveEntry entry;
 
-		while((entry = tis.getNextEntry()) != null) {
+		while((entry = (TarArchiveEntry) tis.getNextEntry()) != null) {
 			int count;
 			byte data[] = new byte[2048];
 			FileOutputStream fos = new FileOutputStream(new File(destFolder, entry.getName()));
 			BufferedOutputStream dest = new BufferedOutputStream(fos);
-			Set<PosixFilePermission> perms = getPermissions(entry.getHeader().mode);
+			Set<PosixFilePermission> perms = getPermissions(entry.getMode());
 
 			while((count = tis.read(data)) != -1) {
 				dest.write(data, 0, count);
@@ -51,7 +59,45 @@ public class PreLaunchDownloadAndExtract {
 
 		tis.close();
 	}
-
+	public void execute(Properties properties) {
+		Map<String, String> replaceTokens = new HashMap<>();
+		for (Entry<Object,Object> nextEntry : properties.entrySet()) {
+			replaceTokens.put("${" + nextEntry.getKey() + "}", (String)nextEntry.getValue());
+			replaceTokens.put("@" + nextEntry.getKey() + "@", (String)nextEntry.getValue());
+		}
+		if (downloadUrl("", properties, replaceTokens)) {
+			int i = 1;
+			while (downloadUrl("" + i, properties, replaceTokens)) {}
+		}
+	}
+	
+	private boolean downloadUrl(String propertySuffix, Properties properties, Map<String, String> replaceTokens) {
+		String url = properties.getProperty(PROPERTY_KEY_PREFIX_DOWNLOAD_URL + propertySuffix);
+		if (url == null) return false;
+		String root = properties.getProperty(PROPERTY_KEY_PREFIX_EXTRACT_ROOT + propertySuffix, ".");
+		try {
+			URL source = new URL(url);
+			String fileName = FileUtil.getFileName(source.getPath());
+			String lcFileName = fileName.toLowerCase();
+			File target = File.createTempFile(fileName, "download");
+			URLConnection conn = new URL(url).openConnection();
+			FileUtil.copy(conn.getInputStream(), target);
+			if (lcFileName.endsWith("tar.gz") || lcFileName.endsWith(".tgz")) {
+				extractTar(new FileInputStream(target), new File(root));
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return true;
+	}
+	
+	private boolean downloadArtifact(String propertySuffix, Properties properties, Map<String, String> replaceTokens) {
+		String artifact = properties.getProperty(PROPERTY_KEY_PREFIX_DOWNLOAD_ARTIFACT);
+		if (artifact == null) return false;
+		return true;
+	}
+	
+	
 	public Set<PosixFilePermission> getPermissions(int mode) {
 		Set<PosixFilePermission> permissions = new HashSet<PosixFilePermission>();
 		for (int mask : perms.keySet()) {

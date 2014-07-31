@@ -19,11 +19,9 @@ import org.eclipse.aether.resolution.ArtifactResult;
 import org.eclipse.aether.resolution.DependencyRequest;
 import org.eclipse.aether.resolution.DependencyResolutionException;
 import org.eclipse.aether.util.graph.visitor.PreorderNodeListGenerator;
+import static com.nitorcreations.deployer.PropertyKeys.*;
 
 public class DependencyLauncher extends AbstractLauncher implements LaunchMethod {
-	public static final String PROPERTY_KEY_PREFIX_JAVA_ARGS = "deployer.java.arg";
-	public static final String PROPERTY_KEY_RESOLVE_TRANSITIVE = "deployer.artifact.transitive";
-	public static final String PROPERTY_KEY_MAIN_CLASS = "deployer.launch.mainclass";
 	String artifactCoords;
 	private String localRepo;
 	private boolean transitive = false;
@@ -67,7 +65,7 @@ public class DependencyLauncher extends AbstractLauncher implements LaunchMethod
 		super.setProperties(properties);
 		downloader = new AetherDownloader();
 		downloader.setProperties(properties);
-		artifactCoords = properties.getProperty("launch.artifact");
+		artifactCoords = properties.getProperty(PROPERTY_KEY_LAUNCH_ARTIFACT);
 		transitive = Boolean.valueOf(properties.getProperty(PROPERTY_KEY_RESOLVE_TRANSITIVE, "false"));
 		mainClass = properties.getProperty(PROPERTY_KEY_MAIN_CLASS, "");
 		File javaBin = new File(new File(System.getProperty("java.home")), "bin");
