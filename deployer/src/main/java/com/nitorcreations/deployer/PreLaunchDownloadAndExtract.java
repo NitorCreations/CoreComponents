@@ -34,9 +34,11 @@ import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
 import org.apache.commons.compress.archivers.ArchiveEntry;
+import org.apache.commons.compress.archivers.ArchiveException;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.ArchiveStreamFactory;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
+import org.apache.commons.compress.compressors.CompressorException;
 import org.apache.commons.compress.compressors.CompressorStreamFactory;
 
 public class PreLaunchDownloadAndExtract {
@@ -72,26 +74,17 @@ public class PreLaunchDownloadAndExtract {
 			while (downloadArtifact("" + i, properties, replaceTokens)) {}
 		}
 	}
-	
+
 	private boolean downloadUrl(String propertySuffix, Properties properties, Map<String, String> replaceTokens) {
 		String url = properties.getProperty(PROPERTY_KEY_PREFIX_DOWNLOAD_URL + propertySuffix);
 		if (url == null) return false;
-		String root = properties.getProperty(PROPERTY_KEY_PREFIX_EXTRACT_ROOT + propertySuffix, ".");
 		try {
-			String fileName = FileUtil.getFileName(url);
-			String lcFileName = fileName.toLowerCase();
-			File target = File.createTempFile(fileName, "download");
 			URLConnection conn = new URL(url).openConnection();
+			String fileName = FileUtil.getFileName(url);
+			File target = File.createTempFile(fileName, "download");
 			FileUtil.copy(conn.getInputStream(), target);
-			Set<PathMatcher> skipMatchers = getGlobMatchers(properties.getProperty(PROPERTY_KEY_PREFIX_EXTRACT_SKIP_GLOB +propertySuffix));
-			Set<PathMatcher> filterMatchers = getGlobMatchers(properties.getProperty(PROPERTY_KEY_PREFIX_EXTRACT_INTERPOLATE_GLOB +propertySuffix));
-			InputStream in = new BufferedInputStream(new FileInputStream(target), 8 * 1024);
-			if (lcFileName.endsWith("z") ||	lcFileName.endsWith("bz2") || lcFileName.endsWith("lzma") ||
-					lcFileName.endsWith("arj") || lcFileName.endsWith("deflate")) {
-				in = cfactory.createCompressorInputStream(in);
-			}
-			extractArchive(factory.createArchiveInputStream(in), new File(root), replaceTokens, skipMatchers, filterMatchers);
-		} catch (Exception e) {
+			extractFile(propertySuffix, properties, target, replaceTokens, url);
+		} catch (IOException | CompressorException | ArchiveException e) {
 			LogRecord rec = new LogRecord(Level.WARNING, "Failed to download and extract " + url);
 			rec.setThrown(e);
 			logger.log(rec);
@@ -99,9 +92,33 @@ public class PreLaunchDownloadAndExtract {
 		return true;
 	}
 
+	private void extractFile(String propertySuffix, Properties properties,
+			File archive, Map<String, String> replaceTokens, String fileName) throws CompressorException, IOException, ArchiveException {
+		String root = properties.getProperty(PROPERTY_KEY_PREFIX_EXTRACT_ROOT + propertySuffix, ".");
+		String lcFileName = fileName.toLowerCase();
+		Set<PathMatcher> skipMatchers = getGlobMatchers(properties.getProperty(PROPERTY_KEY_PREFIX_EXTRACT_SKIP_GLOB +propertySuffix));
+		Set<PathMatcher> filterMatchers = getGlobMatchers(properties.getProperty(PROPERTY_KEY_PREFIX_EXTRACT_INTERPOLATE_GLOB +propertySuffix));
+		InputStream in = new BufferedInputStream(new FileInputStream(archive), 8 * 1024);
+		if (lcFileName.endsWith("z") ||	lcFileName.endsWith("bz2") || lcFileName.endsWith("lzma") ||
+				lcFileName.endsWith("arj") || lcFileName.endsWith("deflate")) {
+			in = cfactory.createCompressorInputStream(in);
+		}
+		extractArchive(factory.createArchiveInputStream(in), new File(root), replaceTokens, skipMatchers, filterMatchers);
+	}
+
 	private boolean downloadArtifact(String propertySuffix, Properties properties, Map<String, String> replaceTokens) {
 		String artifact = properties.getProperty(PROPERTY_KEY_PREFIX_DOWNLOAD_ARTIFACT);
 		if (artifact == null) return false;
+		AetherDownloader downloader = new AetherDownloader();
+		downloader.setProperties(properties);
+		File artifactFile = downloader.downloadArtifact(artifact);
+		try {
+			extractFile(propertySuffix, properties, artifactFile, replaceTokens, artifactFile.getName());
+		} catch (CompressorException | IOException | ArchiveException e) {
+			LogRecord rec = new LogRecord(Level.WARNING, "Failed to download and extract artifact " + artifact);
+			rec.setThrown(e);
+			logger.log(rec);
+		}
 		return true;
 	}
 
@@ -134,7 +151,7 @@ public class PreLaunchDownloadAndExtract {
 		}
 		return permissions;
 	}
-	
+
 	private void extractArchive(ArchiveInputStream is, File destFolder, Map<String, String> replaceTokens, Set<PathMatcher> skipMatchers, Set<PathMatcher> filterMatchers) throws IOException {
 		try {
 			ArchiveEntry entry;

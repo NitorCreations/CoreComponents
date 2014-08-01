@@ -83,12 +83,14 @@ public class Main {
 		} catch (IOException e) {
         	usage(e.getMessage());
 		}
+        PreLaunchDownloadAndExtract downloader = new PreLaunchDownloadAndExtract();
+        downloader.execute(launchProperties);
         launcher.setProperties(launchProperties);
         Thread executable = new Thread(launcher);
         executable.start();
         long pid = launcher.getProcessId();
 		try {
-			StatsSender statsSender = new StatsSender(transmitter, getMBeanServerConnection(launcher.getProcessId()), pid);
+			StatsSender statsSender = new StatsSender(transmitter, getMBeanServerConnection(launcher.getProcessId()), pid, new StatisticsConfig());
 			Thread statThread = new Thread(statsSender);
 			statThread.start();
 		} catch (Exception e) {

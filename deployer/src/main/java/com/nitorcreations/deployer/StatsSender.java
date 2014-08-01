@@ -9,6 +9,9 @@ import java.net.URISyntaxException;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 
 import javax.management.AttributeNotFoundException;
 import javax.management.InstanceNotFoundException;
@@ -42,15 +45,18 @@ import com.nitorcreations.messages.ThreadInfoMessage;
 import com.nitorcreations.messages.WebSocketTransmitter;
 
 public class StatsSender implements Runnable {
+	private Logger logger = Logger.getLogger(this.getClass().getName());
 	private AtomicBoolean running = new AtomicBoolean(true);
 	private final WebSocketTransmitter transmitter;
+	private final StatisticsConfig conf;
 	private MBeanServerConnection mBeanServerConnection;
 	private long pid;
 	
-	public StatsSender(WebSocketTransmitter transmitter, MBeanServerConnection mBeanServerConnection, long pid) throws URISyntaxException {
+	public StatsSender(WebSocketTransmitter transmitter, MBeanServerConnection mBeanServerConnection, long pid, StatisticsConfig config) throws URISyntaxException {
 		this.transmitter = transmitter;
 		this.mBeanServerConnection = mBeanServerConnection;
 		this.pid = pid;
+		this.conf = config;
 	}
 
 	public void stop() {
@@ -62,12 +68,12 @@ public class StatsSender implements Runnable {
 	public void run() {
 		Sigar sigar = new Sigar();
 
-		long nextProcs = System.currentTimeMillis() + 5000;
-		long nextCpus =  System.currentTimeMillis() + 5000;
-		long nextProcCpus =  System.currentTimeMillis() + 5000;
-		long nextMem =  System.currentTimeMillis() + 5000;
-		long nextJmx = System.currentTimeMillis() + 5000;
-		long nextDisks = System.currentTimeMillis() + 60000;
+		long nextProcs = System.currentTimeMillis() + conf.getIntervalProcs();
+		long nextCpus =  System.currentTimeMillis() + conf.getIntervalCpus();
+		long nextProcCpus =  System.currentTimeMillis() + conf.getIntervalProcCpus();
+		long nextMem =  System.currentTimeMillis() + conf.getIntervalMem();
+		long nextJmx = System.currentTimeMillis() + conf.getIntervalJmx();
+		long nextDisks = System.currentTimeMillis() + conf.getIntervalDisks();
 		ProcStat pStat;
 		DiskUsage[] dStat;
 		Cpu cStat;
@@ -82,17 +88,13 @@ public class StatsSender implements Runnable {
 					Processes msg = new Processes();
 					PropertyUtils.copyProperties(msg, pStat);
 					transmitter.queue(msg);
-				} catch (SigarException e) {
-					e.printStackTrace();
-					return;
-				} catch (IllegalAccessException e) {
-					e.printStackTrace();
-				} catch (InvocationTargetException e) {
-					e.printStackTrace();
-				} catch (NoSuchMethodException e) {
-					e.printStackTrace();
+				} catch (SigarException | IllegalAccessException | InvocationTargetException | 
+						NoSuchMethodException e) {
+					LogRecord rec = new LogRecord(Level.WARNING, "Failed to get Process statistics");
+					rec.setThrown(e);
+					logger.log(rec);
 				}
-				nextProcs = nextProcs + 5000;
+				nextProcs = nextProcs + conf.getIntervalProcs();
 			}
 			if (now > nextCpus) {
 				try {
@@ -100,17 +102,13 @@ public class StatsSender implements Runnable {
 					CPU msg = new CPU();
 					PropertyUtils.copyProperties(msg, cStat);
 					transmitter.queue(msg);
-				} catch (SigarException e) {
-					e.printStackTrace();
-					return;
-				} catch (IllegalAccessException e) {
-					e.printStackTrace();
-				} catch (InvocationTargetException e) {
-					e.printStackTrace();
-				} catch (NoSuchMethodException e) {
-					e.printStackTrace();
+				} catch (SigarException | IllegalAccessException | InvocationTargetException | 
+						NoSuchMethodException e) {
+					LogRecord rec = new LogRecord(Level.WARNING, "Failed to get CPU statistics");
+					rec.setThrown(e);
+					logger.log(rec);
 				}
-				nextCpus = nextCpus + 5000;
+				nextCpus = nextCpus + conf.getIntervalCpus();
 			}
 			if (now > nextProcCpus) {
 				try {
@@ -118,17 +116,13 @@ public class StatsSender implements Runnable {
 					ProcessCPU  msg = new ProcessCPU();
 					PropertyUtils.copyProperties(msg, pCStat);
 					transmitter.queue(msg);
-				} catch (SigarException e) {
-					e.printStackTrace();
-					return;
-				} catch (IllegalAccessException e) {
-					e.printStackTrace();
-				} catch (InvocationTargetException e) {
-					e.printStackTrace();
-				} catch (NoSuchMethodException e) {
-					e.printStackTrace();
+				} catch (SigarException | IllegalAccessException | InvocationTargetException | 
+						NoSuchMethodException e) {
+					LogRecord rec = new LogRecord(Level.WARNING, "Failed to Process CPU statistics");
+					rec.setThrown(e);
+					logger.log(rec);
 				}
-				nextProcCpus = nextProcCpus + 5000;
+				nextProcCpus = nextProcCpus + conf.getIntervalProcCpus();
 			}
 			if (now > nextMem) {
 				try {
@@ -136,42 +130,30 @@ public class StatsSender implements Runnable {
 					Memory msg = new Memory();
 					PropertyUtils.copyProperties(msg, mem);
 					transmitter.queue(msg);
-				} catch (SigarException e) {
-					e.printStackTrace();
-					return;
-				} catch (IllegalAccessException e) {
-					e.printStackTrace();
-				} catch (InvocationTargetException e) {
-					e.printStackTrace();
-				} catch (NoSuchMethodException e) {
-					e.printStackTrace();
+				} catch (SigarException | IllegalAccessException | InvocationTargetException | 
+						NoSuchMethodException e) {
+					LogRecord rec = new LogRecord(Level.WARNING, "Failed to get Memory statistics");
+					rec.setThrown(e);
+					logger.log(rec);
 				}
-				nextMem = nextMem + 5000;
+				nextMem = nextMem + conf.getIntervalMem();
 			}
-			if (now > nextJmx) {
-				try {
-					JmxMessage msg = getJmxStats();
-					if (msg != null) {
-						transmitter.queue(msg);
+			if (mBeanServerConnection != null) {
+				if (now > nextJmx) {
+					try {
+						JmxMessage msg = getJmxStats();
+						if (msg != null) {
+							transmitter.queue(msg);
+						}
+					} catch (IOException | MalformedObjectNameException | ReflectionException |
+							IllegalAccessException |InvocationTargetException| NoSuchMethodException |
+							InstanceNotFoundException | MBeanException e) {
+						LogRecord rec = new LogRecord(Level.WARNING, "Failed to get JMX statistics");
+						rec.setThrown(e);
+						logger.log(rec);
 					}
-				} catch (IOException e) {
-					e.printStackTrace();
-				} catch (MalformedObjectNameException e) {
-					e.printStackTrace();
-				} catch (ReflectionException e) {
-					e.printStackTrace();
-				} catch (IllegalAccessException e) {
-					e.printStackTrace();
-				} catch (InvocationTargetException e) {
-					e.printStackTrace();
-				} catch (NoSuchMethodException e) {
-					e.printStackTrace();
-				} catch (InstanceNotFoundException e) {
-					e.printStackTrace();
-				} catch (MBeanException e) {
-					e.printStackTrace();
+					nextJmx = nextJmx + conf.getIntervalJmx();
 				}
-				nextJmx = nextJmx + 5000;
 			}
 			if (now > nextDisks) {
 				try {
@@ -186,17 +168,13 @@ public class StatsSender implements Runnable {
 					for (DiskUsage next : dStat) {
 						transmitter.queue(next);
 					}
-				} catch (SigarException e) {
-					e.printStackTrace();
-					return;
-				} catch (IllegalAccessException e) {
-					e.printStackTrace();
-				} catch (InvocationTargetException e) {
-					e.printStackTrace();
-				} catch (NoSuchMethodException e) {
-					e.printStackTrace();
+				} catch (SigarException | IllegalAccessException | InvocationTargetException | 
+						NoSuchMethodException e) {
+					LogRecord rec = new LogRecord(Level.WARNING, "Failed to get Disk statistics");
+					rec.setThrown(e);
+					logger.log(rec);
 				}
-				nextDisks = nextDisks + 60000;
+				nextDisks = nextDisks + conf.getIntervalDisks();
 			}
 		}
 	}
@@ -220,7 +198,9 @@ public class StatsSender implements Runnable {
 				}
 			 } catch (AttributeNotFoundException | InstanceNotFoundException
 					| MBeanException | ReflectionException e) {
-				e.printStackTrace();
+					LogRecord rec = new LogRecord(Level.WARNING, "Failed to collect GC JMX statistics");
+					rec.setThrown(e);
+					logger.log(rec);
 			}
 		}
 		for (String nextPool : poolNames) {
@@ -232,7 +212,9 @@ public class StatsSender implements Runnable {
 				ret.memoryPoolPeakUsage.put(nextPool, (Long) ((CompositeDataSupport)mBeanServerConnection.getAttribute(next.getObjectName(), "PeakUsage")).get("used"));
 			} catch (AttributeNotFoundException | InstanceNotFoundException
 					| MBeanException | ReflectionException e) {
-				e.printStackTrace();
+				LogRecord rec = new LogRecord(Level.WARNING, "Failed to collect Memory JMX statistics");
+				rec.setThrown(e);
+				logger.log(rec);
 			}
 		}
 		query = new ObjectName("java.lang:type=Memory");
@@ -243,7 +225,9 @@ public class StatsSender implements Runnable {
 			ret.setNonHeapMemory(((Long) ((CompositeDataSupport)mBeanServerConnection.getAttribute(next.getObjectName(), "NonHeapMemoryUsage")).get("used")).longValue());
 		} catch (AttributeNotFoundException | InstanceNotFoundException
 				| MBeanException | ReflectionException e) {
-			e.printStackTrace();
+			LogRecord rec = new LogRecord(Level.WARNING, "Failed to collect Heap Memory JMX statistics");
+			rec.setThrown(e);
+			logger.log(rec);
 		}
 		query = new ObjectName("java.lang:type=MemoryPool,name=Code Cache");
 		Set<ObjectInstance> cc = mBeanServerConnection.queryMBeans(query, null);
@@ -252,7 +236,9 @@ public class StatsSender implements Runnable {
 			ret.setHeapMemory(((Long) ((CompositeDataSupport)mBeanServerConnection.getAttribute(next.getObjectName(), "Usage")).get("used")).longValue());
 		} catch (AttributeNotFoundException | InstanceNotFoundException
 				| MBeanException | ReflectionException e) {
-			e.printStackTrace();
+			LogRecord rec = new LogRecord(Level.WARNING, "Failed to collect Code Cache statistics");
+			rec.setThrown(e);
+			logger.log(rec);
 		}
 		query = new ObjectName("java.lang:type=Threading");
 		Set<ObjectInstance> tr = mBeanServerConnection.queryMBeans(query, null);
