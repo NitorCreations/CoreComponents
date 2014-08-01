@@ -6,7 +6,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URISyntaxException;
 
-
 import com.nitorcreations.messages.OutputMessage;
 import com.nitorcreations.messages.WebSocketTransmitter;
 

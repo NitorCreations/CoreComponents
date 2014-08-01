@@ -1,5 +1,7 @@
 package com.nitorcreations.deployer;
 
+import static com.nitorcreations.deployer.PropertyKeys.PROPERTY_KEY_WDIR;
+
 import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
@@ -16,7 +18,6 @@ import org.hyperic.sigar.ptql.ProcessQuery;
 import org.hyperic.sigar.ptql.ProcessQueryFactory;
 
 import com.nitorcreations.messages.WebSocketTransmitter;
-import static com.nitorcreations.deployer.PropertyKeys.*;
 
 
 public abstract class AbstractLauncher implements LaunchMethod {

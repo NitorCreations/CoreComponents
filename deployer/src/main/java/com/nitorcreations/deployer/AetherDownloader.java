@@ -1,5 +1,8 @@
 package com.nitorcreations.deployer;
 
+import static com.nitorcreations.deployer.PropertyKeys.PROPERTY_KEY_LOCAL_REPOSITORY;
+import static com.nitorcreations.deployer.PropertyKeys.PROPERTY_KEY_REMOTE_REPOSITORY;
+
 import java.io.File;
 import java.util.Properties;
 
@@ -19,8 +22,6 @@ import org.eclipse.aether.resolution.ArtifactResult;
 import org.eclipse.aether.resolution.DependencyRequest;
 import org.eclipse.aether.resolution.DependencyResolutionException;
 import org.eclipse.aether.util.graph.visitor.PreorderNodeListGenerator;
-
-import static com.nitorcreations.deployer.PropertyKeys.*;
 
 public class AetherDownloader {
 	private String localRepo;

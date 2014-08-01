@@ -1,5 +1,11 @@
 package com.nitorcreations.deployer;
 
+import static com.nitorcreations.deployer.PropertyKeys.PROPERTY_KEY_LAUNCH_ARTIFACT;
+import static com.nitorcreations.deployer.PropertyKeys.PROPERTY_KEY_MAIN_CLASS;
+import static com.nitorcreations.deployer.PropertyKeys.PROPERTY_KEY_PREFIX_JAVA_ARGS;
+import static com.nitorcreations.deployer.PropertyKeys.PROPERTY_KEY_PREFIX_LAUNCH_ARGS;
+import static com.nitorcreations.deployer.PropertyKeys.PROPERTY_KEY_RESOLVE_TRANSITIVE;
+
 import java.io.File;
 import java.util.Properties;
 
@@ -7,19 +13,9 @@ import org.apache.maven.repository.internal.MavenRepositorySystemUtils;
 import org.eclipse.aether.DefaultRepositorySystemSession;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.artifact.DefaultArtifact;
-import org.eclipse.aether.collection.CollectRequest;
-import org.eclipse.aether.collection.DependencyCollectionException;
 import org.eclipse.aether.graph.Dependency;
-import org.eclipse.aether.graph.DependencyNode;
 import org.eclipse.aether.repository.LocalRepository;
 import org.eclipse.aether.repository.RemoteRepository;
-import org.eclipse.aether.resolution.ArtifactRequest;
-import org.eclipse.aether.resolution.ArtifactResolutionException;
-import org.eclipse.aether.resolution.ArtifactResult;
-import org.eclipse.aether.resolution.DependencyRequest;
-import org.eclipse.aether.resolution.DependencyResolutionException;
-import org.eclipse.aether.util.graph.visitor.PreorderNodeListGenerator;
-import static com.nitorcreations.deployer.PropertyKeys.*;
 
 public class DependencyLauncher extends AbstractLauncher implements LaunchMethod {
 	String artifactCoords;

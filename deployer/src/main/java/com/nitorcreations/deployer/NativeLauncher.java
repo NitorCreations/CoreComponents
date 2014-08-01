@@ -1,7 +1,9 @@
 package com.nitorcreations.deployer;
 
+import static com.nitorcreations.deployer.PropertyKeys.PROPERTY_KEY_LAUNCH_BINARY;
+import static com.nitorcreations.deployer.PropertyKeys.PROPERTY_KEY_PREFIX_LAUNCH_ARGS;
+
 import java.util.Properties;
-import static com.nitorcreations.deployer.PropertyKeys.*;
 
 public class NativeLauncher extends AbstractLauncher implements LaunchMethod {
 
