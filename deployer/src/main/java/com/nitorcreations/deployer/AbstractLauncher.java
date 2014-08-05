@@ -1,6 +1,6 @@
 package com.nitorcreations.deployer;
 
-import static com.nitorcreations.deployer.PropertyKeys.PROPERTY_KEY_WDIR;
+import static com.nitorcreations.deployer.PropertyKeys.*;
 
 import java.io.File;
 import java.io.IOException;

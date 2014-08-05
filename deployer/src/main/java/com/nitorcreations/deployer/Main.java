@@ -34,6 +34,8 @@ import com.sun.tools.attach.AgentLoadException;
 import com.sun.tools.attach.AttachNotSupportedException;
 import com.sun.tools.attach.VirtualMachine;
 
+import static com.nitorcreations.deployer.PropertyKeys.*;
+
 public class Main {
     private static final String LOCAL_CONNECTOR_ADDRESS_PROP = "com.sun.management.jmxremote.localConnectorAddress";
     public static final String LAUNCH_PROPERTY_FILE = "launch.properties";
@@ -73,7 +75,7 @@ public class Main {
         
         LaunchMethod launcher = null;
         try {
-        	launcher = LaunchMethod.TYPE.valueOf(launchProperties.getProperty(LaunchMethod.PROPERTY_KEY_LAUNCH_METHOD)).getLauncher();
+        	launcher = LaunchMethod.TYPE.valueOf(launchProperties.getProperty(PROPERTY_KEY_LAUNCH_METHOD)).getLauncher();
         } catch (Throwable t) {
         	usage(t.getMessage());
         }
