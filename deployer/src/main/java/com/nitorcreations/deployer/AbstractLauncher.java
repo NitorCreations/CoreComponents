@@ -12,6 +12,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.hyperic.sigar.Sigar;
 import org.hyperic.sigar.ptql.ProcessQuery;
@@ -27,7 +28,7 @@ public abstract class AbstractLauncher implements LaunchMethod {
 	
 	protected WebSocketTransmitter transmitter;
 	protected Process child;
-	protected int returnValue=-1;
+	protected AtomicInteger returnValue= new AtomicInteger(-1);
 	protected Map<String, String> extraEnv = new HashMap<>();
 	protected File workingDir;
 	
@@ -87,7 +88,7 @@ public abstract class AbstractLauncher implements LaunchMethod {
 			StreamLinePumper stderr = new StreamLinePumper(child.getErrorStream(), transmitter, "STDERR");
 			new Thread(stdout, "child-stdout-pumper").start();
 			new Thread(stderr, "child-sdrerr-pumper").start();
-			setReturnValue(child.waitFor());
+			returnValue.set(child.waitFor());
 		} catch (IOException | URISyntaxException | InterruptedException e) {
 			e.printStackTrace();
 		}
@@ -100,11 +101,8 @@ public abstract class AbstractLauncher implements LaunchMethod {
 		}
 	}
 	
-	private synchronized void setReturnValue(int val) {
-		returnValue = val;
-	}
 	public synchronized int getReturnValue() {
-		return returnValue;
+		return returnValue.get();
 	}
 	protected void addLauncherArgs(Properties properties, String prefix) {
 		int i=1;
