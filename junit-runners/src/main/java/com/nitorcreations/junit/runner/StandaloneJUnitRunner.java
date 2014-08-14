@@ -17,7 +17,9 @@ package com.nitorcreations.junit.runner;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.runner.Description;
 import org.junit.runner.JUnitCore;
@@ -56,15 +58,20 @@ public class StandaloneJUnitRunner {
   }
 
   private Class<?>[][] parseClassSets(String... args) {
+    Set<String> seenClassNames = new HashSet<String>();
     Class<?>[][] classSets = new Class[args.length][];
     for (int i = 0; i < args.length; ++i) {
       String[] classNames = args[i].split(",");
       classSets[i] = new Class[classNames.length];
       for (int j = 0; j < classNames.length; ++j) {
+        String className = classNames[j].trim();
+        if (!seenClassNames.add(className)) {
+          throw new RuntimeException("Duplicate class name specified: " + className);
+        }
         try {
-          classSets[i][j] = Class.forName(classNames[j]);
+          classSets[i][j] = Class.forName(className);
         } catch (Throwable t) {
-          throw new RuntimeException("Class " + classNames[j] + " not available: " + t);
+          throw new RuntimeException("Class " + className + " not available: " + t);
         }
       }
     }
