@@ -48,8 +48,20 @@ public class KillProcess {
         return "Linux".equals(os) || "Mac OS X".equals(os);
     }
 
-    private static void killProcess(final String pid) throws IOException, InterruptedException {
+    public static void termProcess(final String pid) throws IOException, InterruptedException {
+        new ProcessBuilder(getTermCommand(pid)).start().waitFor();
+    }
+
+    public static void killProcess(final String pid) throws IOException, InterruptedException {
         new ProcessBuilder(getKillCommand(pid)).start().waitFor();
+    }
+
+    private static List<String> getTermCommand(final String pid) {
+        if (macOrLinux()) {
+            return asList("kill", "-TERM", pid);
+        }
+        // windows
+        return asList("taskkill", "/pid", pid, "/t");
     }
 
     private static List<String> getKillCommand(final String pid) {
