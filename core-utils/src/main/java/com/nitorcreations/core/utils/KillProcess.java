@@ -1,5 +1,6 @@
 package com.nitorcreations.core.utils;
 
+import static java.lang.Integer.parseInt;
 import static java.lang.System.err;
 import static java.lang.System.getProperty;
 import static java.nio.charset.Charset.defaultCharset;
@@ -22,7 +23,7 @@ public class KillProcess {
     private static final String os = getProperty("os.name");
 
     public static void main(String... args) {
-        gracefullyTerminateOrKillProcessUsingPort(Integer.parseInt(args[0]), args.length>1 ? Integer.parseInt(args[1]) : 0, true);
+        gracefullyTerminateOrKillProcessUsingPort(parseInt(args[0]), args.length > 1 ? parseInt(args[1]) : 0, true);
     }
 
     public static void killProcessUsingPort(final int port) {
@@ -96,7 +97,7 @@ public class KillProcess {
         new ProcessBuilder(getTermCommand(pid)).start().waitFor();
     }
 
-    private static void killProcess(final String pid) throws IOException, InterruptedException {
+    public static void killProcess(final String pid) throws IOException, InterruptedException {
         new ProcessBuilder(getKillCommand(pid)).start().waitFor();
     }
 
