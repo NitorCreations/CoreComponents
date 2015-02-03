@@ -5,7 +5,7 @@ JUnit Runners
 JUnit test runners for various purposes.
 
 - NestedRunner for running plain old Java classes in nested configuration.
-- NicelyParametrized for parameterized tests.
+- WrappingParameterizedRunner for parameterized tests.
 
 StandaloneJUnitRunner
 - Avoids ant/maven/etc dependency when running your tests and generating standard xml reports.
@@ -91,7 +91,7 @@ public class ListTest {
 WrappingParameterizedRunner
 ===========================
 
-See [/NitorCreations/CoreComponents/wiki/WrappingParameterizedRunner]
+See [wiki documentation](https://github.com/NitorCreations/CoreComponents/wiki/WrappingParameterizedRunner)
 
 NicelyParameterized
 -------------------
