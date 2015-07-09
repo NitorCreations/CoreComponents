@@ -12,6 +12,20 @@ StandaloneJUnitRunner
 - Built-in support for threads and explicit control and how tests assigned to them
 - Supports packaging your integration tests and dependencies to a single executable jar and run it anywhere.
 
+Installation
+============
+
+JUnit Runners is available in [Maven Central](http://search.maven.org/#artifactdetails%7Ccom.nitorcreations%7Cjunit-runners%7C1.3%7Cjar) so you can include it to your Maven project by adding this to `pom.xml`.
+
+```xml
+<dependency>
+  <groupId>com.nitorcreations</groupId>
+  <artifactId>junit-runners</artifactId>
+  <version>1.3</version>
+  <scope>test</scope>
+</dependency>
+```
+
 NestedRunner
 ============
 
