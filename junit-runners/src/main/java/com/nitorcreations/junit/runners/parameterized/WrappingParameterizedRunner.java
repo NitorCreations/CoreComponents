@@ -1,5 +1,5 @@
 /**
- * Copyright 2014 Nitor Creations Oy
+ * Copyright 2014-2015 Nitor Creations Oy
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,8 +60,8 @@ import com.nitorcreations.junit.runners.parameterized.ParameterizedSuiteBuilder.
  * public class MyTest {
  *   &#64;ParameterizedSuite
  *   public static void suite(ParameterizedSuiteBuilder builder) {
- *     builder.add().withConstructor("foo").withDescription("try foo");
- *     builder.add().withConstructor("bar").withDescription("try bar");
+ *     builder.add().withConstructor("foo").named("try foo");
+ *     builder.add().withConstructor("bar").named("try bar");
  *   }
  *   
  *   private String str;
@@ -84,7 +84,7 @@ import com.nitorcreations.junit.runners.parameterized.ParameterizedSuiteBuilder.
  * The withConstructor() calls validates constructor parameters in-place so you
  * get immediate feedback if you supply the wrong parameters.
  * <p>
- * The withDescription() calls provides a description of the test set, seen in
+ * The named() calls provides a description of the test set, seen in
  * the test tree:
  * <ul>
  * <li>MyTest
