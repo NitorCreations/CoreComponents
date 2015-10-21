@@ -325,7 +325,7 @@ public class WrappingParameterizedRunner extends Runner {
 		cw.visitEnd();
 		byte[] clazzBytes = cw.toByteArray();
 
-		/* ** DEBUG export class to /tmp/x.class ** */
+		/* ** DEBUG export class to /tmp/x.class **
 		try {
 			FileOutputStream fos = new FileOutputStream("/tmp/x.class");
 			fos.write(clazzBytes);
@@ -333,7 +333,7 @@ public class WrappingParameterizedRunner extends Runner {
 		} catch (Exception e1) {
 			e1.printStackTrace();
 		}
-		/* ** /DEBUG ** */
+		** /DEBUG ** */
 
 		// inject the new class into the current classloader
 		Class<?> clazz = ClassLoaderInjector.injectClass(
