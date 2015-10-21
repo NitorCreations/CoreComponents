@@ -1,5 +1,5 @@
 /**
- * Copyright 2014 Nitor Creations Oy
+ * Copyright 2014-2015 Nitor Creations Oy
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import java.lang.annotation.Target;
  * method signature is expected to be (the name doesn't matter):
  * 
  * <pre>
+ * &#64;ParameterizedSuite
  * public static void suite(ParameterizedSuiteBuilder builder) { ... }
  * </pre>
  */
