@@ -1,5 +1,5 @@
 /**
- * Copyright 2014 Nitor Creations Oy
+ * Copyright 2014-2015 Nitor Creations Oy
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,9 +25,10 @@ import java.util.Map;
 
 /**
  * This is a helper class for {@link WrappingParameterizedRunner}. It acts as a
- * suite builder, providing an {@link #add()} method to add new tests to the
- * suite. The add method returns a {@link TestInstantiatorBuilder} instance
- * which can then be used to configure the test.
+ * suite builder, providing an {@link #constructWith(Object...)} method to add
+ * new test configurations to the suite. The method returns a
+ * {@link TestInstantiatorBuilder} instance which can then optionally be used to
+ * further configure the test configuration.
  */
 public class ParameterizedSuiteBuilder {
 	private final Class<?> testClass;

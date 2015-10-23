@@ -1,5 +1,5 @@
 /**
- * Copyright 2014 Nitor Creations Oy
+ * Copyright 2014-2015 Nitor Creations Oy
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,10 @@ import static org.objectweb.asm.Opcodes.GETSTATIC;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
+/**
+ * Default strategy is to create a public static field "$constructorArgs" which
+ * stores the set of parameters to run the tests with.
+ */
 public class DefaultParameterizationStrategy implements
 		ParameterizationStrategy {
 

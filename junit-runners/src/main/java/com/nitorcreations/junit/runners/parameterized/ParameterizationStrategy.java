@@ -1,5 +1,5 @@
 /**
- * Copyright 2014 Nitor Creations Oy
+ * Copyright 2014-2015 Nitor Creations Oy
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,12 @@ package com.nitorcreations.junit.runners.parameterized;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
+/**
+ * See the {@link WrappingParameterizedRunner#createParameterizedTestClass()} to
+ * see how this is used and
+ * {@link WrappingParameterizedRunner#chooseParameterizationStrategy()} to see
+ * how the correct implementation is chosen.
+ */
 public interface ParameterizationStrategy {
 	void classCreationInProgress(String nameRaw, ClassVisitor cw);
 
