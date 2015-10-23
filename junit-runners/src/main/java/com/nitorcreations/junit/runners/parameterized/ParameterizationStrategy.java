@@ -18,9 +18,12 @@ package com.nitorcreations.junit.runners.parameterized;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
+import com.nitorcreations.junit.runners.parameterized.ParameterizedSuiteBuilder.TestInstantiatorBuilder;
+
 /**
- * See the {@link WrappingParameterizedRunner#createParameterizedTestClass()} to
- * see how this is used and
+ * See the
+ * {@link WrappingParameterizedRunner#createParameterizedTestClass(int, TestInstantiatorBuilder)}
+ * to see how this is used and
  * {@link WrappingParameterizedRunner#chooseParameterizationStrategy()} to see
  * how the correct implementation is chosen.
  */

@@ -222,9 +222,9 @@ public class ParameterizedSuiteBuilder {
 		 * Set the test description. This appears as the test subtree name in
 		 * the test report.
 		 * 
+		 * @param description the test description
 		 * @return the same test builder instance, for chaining.
 		 */
-
 		public TestInstantiatorBuilder named(String description) {
 			if (description == null) {
 				description = "(null)";

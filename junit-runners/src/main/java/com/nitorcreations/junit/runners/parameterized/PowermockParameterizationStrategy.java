@@ -47,7 +47,7 @@ import org.powermock.core.classloader.annotations.PowerMockIgnore;
  * To achieve this:
  * <ul>
  * <li>Create a helper class that implements PowerMock's @
- * {@link org.powermock.core.classloader.ClassPathAdjuster.ClassPathAdjuster}
+ * {@link org.powermock.core.classloader.ClassPathAdjuster}
  * interface.</li>
  * <li>Store both the testclass bytecode (as an byte array) and the constructor
  * arguments in public static fields in the helper class.</li>
