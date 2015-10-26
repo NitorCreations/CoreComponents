@@ -1,1 +1,1 @@
-*.java   licensefile=.githooks/LICENSE-javadoc
+*.java   licensefile=.githooks/license-maintainer/LICENSE-javadoc
