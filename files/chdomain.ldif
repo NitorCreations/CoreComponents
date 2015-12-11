@@ -22,7 +22,6 @@ olcRootPW: %ROOT_PWD%
 dn: olcDatabase={2}hdb,cn=config
 changetype: modify
 add: olcAccess
-olcAccess: {0}to attrs=userPassword,shadowLastChange by
-  dn="cn=Manager,dc=nitorcreations,dc=com" write by anonymous auth by self write by * none
+olcAccess: {0}to attrs=userPassword,shadowLastChange by dn="cn=Manager,dc=nitorcreations,dc=com" write by anonymous auth by self write by * none
 olcAccess: {1}to dn.base="" by * read
 olcAccess: {2}to * by dn="cn=Manager,dc=nitorcreations,dc=com" write by * read
