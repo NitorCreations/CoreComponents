@@ -1,0 +1,11 @@
+[Unit]
+Description=Atlassian Stash Service
+After=syslog.target network.target
+
+[Service]
+Type=forking
+ExecStart=/opt/confluence/current/bin/start-confluence.sh
+ExecStop=/opt/confluence/current/bin/stop-confluence.sh
+ 
+[Install]
+WantedBy=multi-user.target
