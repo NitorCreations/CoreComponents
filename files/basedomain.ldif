@@ -2,8 +2,8 @@ dn: dc=nitorcreations,dc=com
 objectClass: top
 objectClass: dcObject
 objectclass: organization
-o: Server World
-dc: Server
+o: Nitor Creations
+dc: nitorcretions
 
 dn: cn=Manager,dc=nitorcreations,dc=com
 objectClass: organizationalRole
