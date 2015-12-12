@@ -3,7 +3,6 @@ objectClass: top
 objectClass: dcObject
 objectclass: organization
 o: Nitor Creations
-dc: nitorcretions
 
 dn: cn=Manager,dc=nitorcreations,dc=com
 objectClass: organizationalRole
