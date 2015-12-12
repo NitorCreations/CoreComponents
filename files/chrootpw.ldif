@@ -1,4 +1,4 @@
 dn: olcDatabase={0}config,cn=config
-changetype: modify
+changetype: add
 add: olcRootPW
 olcRootPW: %ROOT_PWD%
