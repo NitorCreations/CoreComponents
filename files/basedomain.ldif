@@ -1,5 +1,0 @@
-
-dn: cn=Manager,dc=nitorcreations,dc=com
-objectClass: organizationalRole
-cn: Manager
-description: Directory Manager
