@@ -1,0 +1,1 @@
+0 5,18 * * * bash -x /var/lib/jenkins/jenkins-home/sync_git.sh >> /var/lib/jenkins/sync_git.log
