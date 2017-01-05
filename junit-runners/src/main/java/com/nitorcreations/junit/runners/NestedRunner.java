@@ -15,6 +15,8 @@
  */
 package com.nitorcreations.junit.runners;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -48,6 +50,9 @@ public class NestedRunner extends ParentRunner<Object> {
 
     public NestedRunner(Class<?> testClass, NestedRunner parentRunner) throws InitializationError {
         super(testClass);
+        if (parentRunner == null && testClass.getDeclaringClass() != null) {
+            parentRunner = new NestedRunner(testClass.getEnclosingClass());
+        }
         this.parentRunner = parentRunner;
         delegatedRunner = new NestedClassRunner(testClass);
         children.addAll(delegatedRunner.giveMeTheDamnChildren());
@@ -106,15 +111,29 @@ public class NestedRunner extends ParentRunner<Object> {
     }
 
     private Object constructTestClass() throws Exception {
-        if (getTestClass().getOnlyConstructor().getParameterTypes().length == 1 && parentRunner != null) {
+        Constructor<?> onlyConstructor = getTestClass().getOnlyConstructor();
+        if (onlyConstructor.getParameterTypes().length == 1 && parentRunner != null) {
             Object parent = parentRunner.constructTestClass();
-            Object newInstance = getTestClass().getOnlyConstructor().newInstance(parent);
+            Object newInstance = onlyConstructor.newInstance(parent);
             delegatedRunner.currentTestObject = newInstance;
             return newInstance;
         }
-        Object newInstance = getTestClass().getOnlyConstructor().newInstance();
+
+        Object newInstance = createNewInstance(onlyConstructor);
         delegatedRunner.currentTestObject = newInstance;
         return newInstance;
+    }
+
+    private Object createNewInstance(Constructor<?> classConstructor) throws InstantiationException, IllegalAccessException, InvocationTargetException {
+        if (classConstructor.getParameterTypes().length == 0) {
+            return classConstructor.newInstance();
+        }
+        else if (classConstructor.getParameterTypes().length == 1) {
+            Class<?> aClass = classConstructor.getParameterTypes()[0];
+            return classConstructor.newInstance(createNewInstance(aClass.getConstructors()[0]));
+        }
+
+        return null;
     }
 
     public List<FrameworkMethod> getBefores() {
